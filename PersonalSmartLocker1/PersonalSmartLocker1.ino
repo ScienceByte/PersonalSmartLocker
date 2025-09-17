@@ -1,8 +1,21 @@
 void setup() {
-Serial.begin(9600);
+pinMode(9, OUTPUT);
 }
 
 void loop() {
-Serial.println("Hello world!");
-delay(1000); 
+
+digitalWrite(9, HIGH);
+delayMicroseconds(2500);
+digitalWrite(9, LOW);
+delayMicroseconds(17500);
+
+delay(500);
+
+digitalWrite(9, HIGH);
+delayMicroseconds(500);
+digitalWrite(9, LOW);
+delayMicroseconds(19500);
+
+delay(500);
+
 }
