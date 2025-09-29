@@ -9,20 +9,19 @@ char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
 
 // Voltage ranges
 const double voltages[][2] = {
-  {0.63, 0.66},   // '1' Row1, Col150
-  {1.36, 1.38},   // '2' Row1, Col390
-  {1.93, 1.94},   // '3' Row1, Col680
-  {0.21, 0.22},   // '4' Row2, Col150
-  {0.51, 0.52},   // '5' Row2, Col390
-  {0.80, 0.81},   // '6' Row2, Col680
-  {0.10, 0.11},   // '7' Row3, Col150
-  {0.26, 0.27},   // '8' Row3, Col390
-  {0.42, 0.43},   // '9' Row3, Col680
-  {0.048, 0.05},  // '*' Row4, Col150
-  {0.12, 0.13},   // '0' Row4, Col390
-  {0.20, 0.21}    // '#' Row4, Col680
+  {4.900, 4.910},   // '1' Row1,C1
+  {4.840, 4.850},   // '2' Row1,C2 
+  {4.730, 4.736},   // '3' Row1,C3 
+  {4.795, 4.800},   // '4' Row2,C1 
+  {4.741, 4.746},   // '5' Row2,C2 
+  {4.620, 4.638},   // '6' Row2,C3 
+  {4.638, 4.655},   // '7' Row3,C1
+  {4.584, 4.600},   // '8' Row3,C2
+  {4.480, 4.492},   // '9' Row3,C3
+  {4.420, 4.440},   // '*' Row4,C1
+  {4.365, 4.400},   // '0' Row4,C2
+  {4.270, 4.300}    // '#' Row4,C3
 };
-
 
 void setup() {
   Serial.begin(9600);
@@ -34,23 +33,23 @@ void loop() {
   double voltage = keyPressed * (5.0 / 1023.0);
 
   // Find which key matches the measured voltage
-  for (int j = 0; j < 12; j++) {
-    if (voltage >= voltages[j][0] && voltage <= voltages[j][1]) {
-      passInput[input] = KEYS[j];
-      input++;
-      Serial.print("Key pressed: ");
-      Serial.println(KEYS[j]);
-      delay(300); 
+   for (int j = 0; j < 12; j++) {
+     if (voltage >= voltages[j][0] && voltage <= voltages[j][1]) {
+       passInput[input] = KEYS[j];
+       input++;
+       Serial.print("Key pressed: ");
+       Serial.println(KEYS[j]);
+       delay(300); 
 
-      if (input == 4) {
-        Serial.print("Passcode: ");
-        for (int i = 0; i < 4; i++) {
-          Serial.print(passInput[i]);
-        }
-        Serial.println();
-        input = 0; // reset for next code
-      }
-      break;
-    }
-  }
+       if (input == 4) {
+         Serial.print("Passcode: ");
+         for (int i = 0; i < 4; i++) {
+           Serial.print(passInput[i]);
+         }
+         Serial.println();
+         input = 0; // reset for next code
+       }
+       break;
+     }
+   }
 }
