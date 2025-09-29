@@ -1,105 +1,56 @@
-// Define the pin for the output
-const int outputPin = 9;
+// Store each number pressed
+char passInput[4];
+int input = 0;
+char approvedPass[5];
+bool passwordSet = false;
 
-// Define the time intervals in microseconds for the pulses
-const unsigned long pulse1HighTime = 2500;
-const unsigned long pulse1LowTime = 17500;
-const unsigned long pulse2HighTime = 500;
-const unsigned long pulse2LowTime = 19500;
+// Key mapping for the 4x3 keypad
+char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
 
-// Define the delay interval in milliseconds between pulse sequences
-const unsigned long delayTime = 500;
-
-// will be using a state machine, using enums for that
-enum State {
-  PULSE_1_HIGH,
-  PULSE_1_LOW,
-  DELAY_1,
-  PULSE_2_HIGH,
-  PULSE_2_LOW,
-  DELAY_2
+// Voltage ranges
+const double voltages[][2] = {
+  {0.63, 0.66},   // '1' Row1, Col150
+  {1.36, 1.38},   // '2' Row1, Col390
+  {1.93, 1.94},   // '3' Row1, Col680
+  {0.21, 0.22},   // '4' Row2, Col150
+  {0.51, 0.52},   // '5' Row2, Col390
+  {0.80, 0.81},   // '6' Row2, Col680
+  {0.10, 0.11},   // '7' Row3, Col150
+  {0.26, 0.27},   // '8' Row3, Col390
+  {0.42, 0.43},   // '9' Row3, Col680
+  {0.048, 0.05},  // '*' Row4, Col150
+  {0.12, 0.13},   // '0' Row4, Col390
+  {0.20, 0.21}    // '#' Row4, Col680
 };
 
-// Variable to hold the current state
-State currentState = PULSE_1_HIGH;
-
-// Variables to store the last time an event happened
-unsigned long previousMicros = 0;
-unsigned long previousMillis = 0;
 
 void setup() {
-  // Set the pin as an output
-  pinMode(outputPin, OUTPUT);
-  
-  // Initialize timers
-  previousMicros = micros();
-  previousMillis = millis();
+  Serial.begin(9600);
+  Serial.println("Set passcode: "); //Prompts the user to input password
 }
 
 void loop() {
-  // current time at the start of the loop
-  unsigned long currentMicros = micros();
-  unsigned long currentMillis = millis();
+  int keyPressed = analogRead(A5);
+  double voltage = keyPressed * (5.0 / 1023.0);
 
-  switch (currentState) {
-    case PULSE_1_HIGH:
-      digitalWrite(outputPin, HIGH);
-      
-      // Check if the required time has passed
-      if (currentMicros - previousMicros >= pulse1HighTime) {
-        currentState = PULSE_1_LOW;
-        // Save the current time for the next interval
-        previousMicros = currentMicros;
+  // Find which key matches the measured voltage
+  for (int j = 0; j < 12; j++) {
+    if (voltage >= voltages[j][0] && voltage <= voltages[j][1]) {
+      passInput[input] = KEYS[j];
+      input++;
+      Serial.print("Key pressed: ");
+      Serial.println(KEYS[j]);
+      delay(300); 
+
+      if (input == 4) {
+        Serial.print("Passcode: ");
+        for (int i = 0; i < 4; i++) {
+          Serial.print(passInput[i]);
+        }
+        Serial.println();
+        input = 0; // reset for next code
       }
       break;
-
-    case PULSE_1_LOW:
-      digitalWrite(outputPin, LOW);
-      
-      // Check if the required time has passed
-      if (currentMicros - previousMicros >= pulse1LowTime) {
-        currentState = DELAY_1;
-        previousMillis = currentMillis; // using millis() for the long delay
-      }
-      break;
-
-    case DELAY_1:
-      // Check if the delay has passed
-      if (currentMillis - previousMillis >= delayTime) {
-        currentState = PULSE_2_HIGH;
-        previousMicros = currentMicros; // Switch back to micros() for the pulse
-      }
-      break;
-
-    case PULSE_2_HIGH:
-      digitalWrite(outputPin, HIGH);
-
-      // Check if the required time has passed
-      if (currentMicros - previousMicros >= pulse2HighTime) {
-        currentState = PULSE_2_LOW;
-        previousMicros = currentMicros;
-      }
-      break;
-
-    case PULSE_2_LOW:
-      digitalWrite(outputPin, LOW);
-
-      // Check if the required time has passed
-      if (currentMicros - previousMicros >= pulse2LowTime) {
-        currentState = DELAY_2;
-        previousMillis = currentMillis; // switch to millis() for the long delay
-      }
-      break;
-
-    case DELAY_2:
-      // Check if the delay has passed
-      if (currentMillis - previousMillis >= delayTime) {
-        // loop back to the beginning
-        currentState = PULSE_1_HIGH;
-        previousMicros = currentMicros; // switch back to micros() for the pulse
-      }
-      break;
+    }
   }
-
-//other code: password checking, etc, will be added here
 }
