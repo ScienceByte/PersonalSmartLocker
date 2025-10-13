@@ -52,7 +52,6 @@ void setup() {
   previousMicros = micros();
   previousMillis = millis();
 
-  openServo();
 }
 
 void loop() {
