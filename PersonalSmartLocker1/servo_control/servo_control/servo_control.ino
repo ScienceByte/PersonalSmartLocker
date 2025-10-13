@@ -1,3 +1,7 @@
+unsigned long previousSerialMillis = 0;
+const long serialInterval = 1200; // Print every 1000 ms, and check if it's obstructed that often too
+int obstructionThreshold = 100;
+
 // SERVO: Define the pin for where the servo plugs in
 const int outputPinServo = 9;
 
@@ -8,7 +12,7 @@ const unsigned long pulseLockHighTime = 500;
 const unsigned long pulseLockLowTime = 19500;
 
 // SERVO: Define the delay interval in milliseconds between pulse sequences for servo control
-const unsigned long delayTime = 2000;
+const unsigned long delayTime = 7000;
 
 // SERVOstate machine FOR PWM, using enums for that.
 enum ServoState {
@@ -22,8 +26,9 @@ enum ServoState {
 
 // SERVO: 0 means we want to be locked, 1 means we want to be open.
 int servoTargetState = 0; 
-//SERVO: pulse counter
-//int pulseCounter = 50;
+int servoIntendedState = 0;
+//SERVO: checks if obstructed. used to keep track of what servotargetstate it should return to
+bool isObstructed = false;
 
 // SERVO: Variable to hold the current SERVOstate
 // Let's start in the locked position.
@@ -36,26 +41,41 @@ unsigned long previousMillis = 0;
 // for DEMONSTRATION: timer to toggle the servo in demonstration
 unsigned long previousToggleMillis = 0;
 
+int anval;
+
 void setup() {
   // Set the Servo output pin as an output
+  Serial.begin(57600);
   pinMode(outputPinServo, OUTPUT);
+  pinMode(A0, INPUT);
   // Initialize timers
   previousMicros = micros();
   previousMillis = millis();
+
+  openServo();
 }
 
 void loop() {
+  //NON-BLOCKING SERIAL PRINT
+  if (millis() - previousSerialMillis >= serialInterval) {
+    previousSerialMillis = millis(); // Reset the print timer
+    // anval = analogRead(A0);
+    // Serial.println(anval);
+    obstructionReturn();
+  }
+
+
   // DEMONSTRATION ~~
   // This is an example of openServo() and lockServo() being called
   // to be replaced with password checking logic.
-  if (millis() - previousToggleMillis >= delayTime) { // 
-    if (servoTargetState == 0) {
-      openServo(); // Tell the servo to open
-    } else {
-      lockServo(); // Tell the servo to lock
-    }
-    previousToggleMillis = millis(); // Reset the toggle timer
-  }
+  //if (millis() - previousToggleMillis >= delayTime) { // 
+  //  if (servoTargetState == 0) {
+  //    openServo(); // Tell the servo to open
+  //  } else {
+  //    lockServo(); // Tell the servo to lock
+  //  }
+  //  previousToggleMillis = millis(); // Reset the toggle timer
+  //}
   // END OF DEMONSTRATION ~~
 
 
@@ -124,10 +144,38 @@ void loop() {
 void lockServo() {
   //pulseCounter = 50;
   servoTargetState = 0;
+  servoIntendedState = 0;
 }
 
 // This function sets the TARGET for the state machine.
 void openServo() {
   //pulseCounter = 50;
   servoTargetState = 1;
+  servoIntendedState = 1;
 }
+
+void obstructionReturn() {
+  anval = analogRead(A0);
+  Serial.println(anval);
+
+  // Check if an obstruction has just appeared
+  if (anval > obstructionThreshold && !isObstructed) {
+    isObstructed = true; // Set the flag so this only runs once
+    Serial.println("Obstruction Detected! Reversing.");
+    
+    // Reverse the current target state
+    if (servoTargetState == 1) {
+      servoTargetState = 0; // If moving open, now move to lock
+    } else {
+      servoTargetState = 1; // If moving to lock, now move to open
+    }
+  } 
+  // Check if an obstruction has just been removed
+  else if (anval <= obstructionThreshold && isObstructed) {
+    isObstructed = false; // Clear the flag
+    Serial.println("Obstruction Cleared. Returning to original position.");
+    
+    // Restore the target state to the original intended state
+    servoTargetState = servoIntendedState;
+  }
+}  

@@ -204,7 +204,7 @@ void loop() {
   }
 
 
-// The servo state machine has to be part of this loop here.
+  // The servo state machine has to be part of this loop here.
   unsigned long currentMicros = micros();
   unsigned long currentMillis = millis();
   switch (currentServoState) {
