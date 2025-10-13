@@ -11,6 +11,9 @@
     // SERVO: Define the delay interval in milliseconds between pulse sequences for servo control
     const unsigned long delayTime = 500;
 
+    //Initialize servo position(Locked = 0, Open = 1)
+    int previousServoState = 0;
+
     // SERVOstate machine FOR PWM, using enums for that.
     enum ServoState {
       PULSE_OPEN_HIGH,
@@ -62,6 +65,10 @@
     {4.270, 4.300}    // '#' 
   };
 
+// These variables are added to replace delay() with a non-blocking timer.
+unsigned long lastKeypressMillis = 0;
+const unsigned long KEYPAD_DEBOUNCE_DELAY = 300;
+
 void setup() {
   Serial.begin(9600);
   //Keypad input_________________________________
@@ -79,12 +86,48 @@ void setup() {
   // This function sets the TARGET for the state machine.
   void lockServo() {
     servoTargetState = 0;
+    if (currentServoState == HOLDING_LOCKED)
+    {
+      currentServoState = PULSE_LOCK_HIGH;
+      previousMicros = micros();
+    }
   }
 
   // This function sets the TARGET for the state machine.
   void openServo() {
     servoTargetState = 1;
+    if (currentServoState == HOLDING_LOCKED)
+    {
+      currentServoState = PULSE_OPEN_HIGH;
+      previousMicros = micros();
+    }
   }
+
+
+//Detect if Servo is blocked and revert back to previous position
+void return_motor()
+{
+  //Read the voltage to determine if it is blocked(Pin A0)
+  int threshold = 120;
+  int voltage_high = analogRead(A0); //servo side of shunt resistor
+  int voltage_low = analogRead(A1); //arduino side of shunt resistor
+  int voltagedrop = voltage_high - voltage_low;
+
+  //Revert back to previous state if blocked
+  if (voltagedrop > threshold)
+  {
+    Serial.print("Servo Motor is blocked.");  
+    if (previousServoState == 0)
+    {
+      lockServo();
+    }
+    else
+    {
+      openServo();
+    }
+  }
+  //Print that the servo motor is blocked
+}
 
 //EEPROM Functions_________________________________________________
   unsigned char EEPROM_read(unsigned int uiAddress) { 
@@ -112,57 +155,62 @@ void setup() {
     }
 
 void loop() {
-  int keyPressed = analogRead(A5);
-  double voltage = keyPressed * (5.0 / 1023.0);
+  // This check ensures the keypad is only read if 300ms have passed since the last press.
+  if (millis() - lastKeypressMillis > KEYPAD_DEBOUNCE_DELAY) {
+    int keyPressed = analogRead(A5);
+    double voltage = keyPressed * (5.0 / 1023.0);
 
-  // Find which key matches the measured voltage
-   for (int j = 0; j < 12; j++) {
-    if (voltage >= voltages[j][0] && voltage <= voltages[j][1]) {
-       passInput[input] = KEYS[j];
-       input++;
-       Serial.print("Key pressed: ");
-       Serial.println(KEYS[j]);
-       delay(300); 
+    // Find which key matches the measured voltage
+    for (int j = 0; j < 12; j++) {
+      if (voltage >= voltages[j][0] && voltage <= voltages[j][1]) {
+        passInput[input] = KEYS[j];
+        input++;
+        Serial.print("Key pressed: ");
+        Serial.println(KEYS[j]);
+        // The delay(300) is replaced by resetting the timer.
+        lastKeypressMillis = millis();
 
-    if (input == 4) {
-    passInput[4] = '\0';
-    Serial.print("Entered passcode: ");
-    Serial.println(passInput);
+        if (input == 4) {
+          passInput[4] = '\0';
+          Serial.print("Entered passcode: ");
+          Serial.println(passInput);
 
-    if (!passwordSet) {
-        // Save the password to EEPROM
-        for (int i = 0; i < 4; i++) {
-            EEPROM_write(i, passInput[i]);
-        }
-        passwordSet = true;
-        Serial.println("Password is saved");
-    } else {
-        // Check password
-        bool correct = true;
-        for (int i = 0; i < 4; i++) {
-            if (passInput[i] != EEPROM_read(i)) {
+          if (!passwordSet) {
+            // Save the password to EEPROM
+            for (int i = 0; i < 4; i++) {
+              EEPROM_write(i, passInput[i]);
+            }
+            passwordSet = true;
+            Serial.println("Password is saved");
+          } else {
+            // Check password
+            bool correct = true;
+            for (int i = 0; i < 4; i++) {
+              if (passInput[i] != EEPROM_read(i)) {
                 correct = false;
                 break;
+              }
             }
-        }
-        if (correct) {
-            Serial.println("Correct Password");
-            openServo();
-        } else {
-            Serial.println("Incorrect Password");
-            lockServo();
-        }
-    }
+            if (correct) {
+              Serial.println("Correct Password");
+              openServo();
+            } else {
+              Serial.println("Incorrect Password");
+              lockServo();
+            }
+          }
 
-    input = 0;  // reset for next entry
-}
-}
-}
+          input = 0;  // reset for next entry
+        }
+        break; // Exit the for-loop once a key is found
+      }
+    }
+  }
+
 
 // The servo state machine has to be part of this loop here.
   unsigned long currentMicros = micros();
   unsigned long currentMillis = millis();
-
   switch (currentServoState) {
     case PULSE_OPEN_HIGH:
       digitalWrite(outputPinServo, HIGH);
@@ -181,9 +229,14 @@ void loop() {
       break;
 
     case HOLDING_OPEN: //delay
+      previousServoState = 1;
       if (servoTargetState == 0) { // check if the command is to lock
         currentServoState = PULSE_LOCK_HIGH; //will go do that ^
         previousMicros = currentMicros; 
+      }
+      else{
+        currentServoState = PULSE_OPEN_HIGH;
+        previousMicros = currentMicros;
       }
       break;
 
@@ -204,10 +257,16 @@ void loop() {
       break;
 
     case HOLDING_LOCKED: //delay
+      previousServoState = 0;
       if (servoTargetState == 1) { // check if the command is to open.
         currentServoState = PULSE_OPEN_HIGH; // will go do that ^
         previousMicros = currentMicros; 
       }
-      break;
+      else{
+        currentServoState = PULSE_LOCK_HIGH;
+        previousMicros = currentMicros;
+      }
+    break;
   }
+  return_motor();
 }
