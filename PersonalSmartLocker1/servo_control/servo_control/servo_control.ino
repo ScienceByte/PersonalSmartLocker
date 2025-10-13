@@ -8,7 +8,7 @@ const unsigned long pulseLockHighTime = 500;
 const unsigned long pulseLockLowTime = 19500;
 
 // SERVO: Define the delay interval in milliseconds between pulse sequences for servo control
-const unsigned long delayTime = 500;
+const unsigned long delayTime = 2000;
 
 // SERVOstate machine FOR PWM, using enums for that.
 enum ServoState {
@@ -22,6 +22,8 @@ enum ServoState {
 
 // SERVO: 0 means we want to be locked, 1 means we want to be open.
 int servoTargetState = 0; 
+//SERVO: pulse counter
+//int pulseCounter = 50;
 
 // SERVO: Variable to hold the current SERVOstate
 // Let's start in the locked position.
@@ -46,7 +48,7 @@ void loop() {
   // DEMONSTRATION ~~
   // This is an example of openServo() and lockServo() being called
   // to be replaced with password checking logic.
-  if (millis() - previousToggleMillis >= 500) { // 
+  if (millis() - previousToggleMillis >= delayTime) { // 
     if (servoTargetState == 0) {
       openServo(); // Tell the servo to open
     } else {
@@ -83,6 +85,10 @@ void loop() {
         currentServoState = PULSE_LOCK_HIGH; //will go do that ^
         previousMicros = currentMicros; 
       }
+      else{
+        currentServoState = PULSE_OPEN_HIGH;
+        previousMicros = currentMicros;
+      }
       break;
 
     case PULSE_LOCK_HIGH:
@@ -106,16 +112,22 @@ void loop() {
         currentServoState = PULSE_OPEN_HIGH; // will go do that ^
         previousMicros = currentMicros; 
       }
-      break;
+      else{
+        currentServoState = PULSE_LOCK_HIGH;
+        previousMicros = currentMicros;
+      }
+    break;
   }
 }
 
 // This function sets the TARGET for the state machine.
 void lockServo() {
+  //pulseCounter = 50;
   servoTargetState = 0;
 }
 
 // This function sets the TARGET for the state machine.
 void openServo() {
+  //pulseCounter = 50;
   servoTargetState = 1;
 }
