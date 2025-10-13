@@ -11,9 +11,6 @@
     // SERVO: Define the delay interval in milliseconds between pulse sequences for servo control
     const unsigned long delayTime = 500;
 
-    //Initialize servo position(Locked = 0, Open = 1)
-    int previousServoState = 0;
-
     // SERVOstate machine FOR PWM, using enums for that.
     enum ServoState {
       PULSE_OPEN_HIGH,
@@ -117,7 +114,7 @@ void return_motor()
   if (voltagedrop > threshold)
   {
     Serial.print("Servo Motor is blocked.");  
-    if (previousServoState == 0)
+    if (currentServoState == 1)
     {
       lockServo();
     }
@@ -126,7 +123,6 @@ void return_motor()
       openServo();
     }
   }
-  //Print that the servo motor is blocked
 }
 
 //EEPROM Functions_________________________________________________
@@ -229,7 +225,6 @@ void loop() {
       break;
 
     case HOLDING_OPEN: //delay
-      previousServoState = 1;
       if (servoTargetState == 0) { // check if the command is to lock
         currentServoState = PULSE_LOCK_HIGH; //will go do that ^
         previousMicros = currentMicros; 
@@ -257,7 +252,6 @@ void loop() {
       break;
 
     case HOLDING_LOCKED: //delay
-      previousServoState = 0;
       if (servoTargetState == 1) { // check if the command is to open.
         currentServoState = PULSE_OPEN_HIGH; // will go do that ^
         previousMicros = currentMicros; 
