@@ -1,66 +1,65 @@
 //Servo Set-up___________________________________________
-    // SERVO: Define the pin for where the servo plugs in
-    const int outputPinServo = 9;
+// SERVO: Define the pin for where the servo plugs in
+const int outputPinServo = 9;
 
-    // SERVO: Define the time intervals in microseconds for the pulses for servo control
-    const unsigned long pulseOpenHighTime = 2500;
-    const unsigned long pulseOpenLowTime = 17500;
-    const unsigned long pulseLockHighTime = 500;
-    const unsigned long pulseLockLowTime = 19500;
+// SERVO: Define the time intervals in microseconds for the pulses for servo control
+const unsigned long pulseOpenHighTime = 2500;
+const unsigned long pulseOpenLowTime = 17500;
+const unsigned long pulseLockHighTime = 500;
+const unsigned long pulseLockLowTime = 19500;
 
-    // SERVO: Define the delay interval in milliseconds between pulse sequences for servo control
-    const unsigned long delayTime = 500;
+// SERVO: Define the delay interval in milliseconds between pulse sequences for servo control
+const unsigned long delayTime = 500;
 
-    // SERVOstate machine FOR PWM, using enums for that.
-    enum ServoState {
-      PULSE_OPEN_HIGH,
-      PULSE_OPEN_LOW,
-      HOLDING_OPEN, 
-      PULSE_LOCK_HIGH,
-      PULSE_LOCK_LOW,
-      HOLDING_LOCKED  
-    };
+// SERVOstate machine FOR PWM, using enums for that.
+enum ServoState {
+  PULSE_OPEN_HIGH,
+  PULSE_OPEN_LOW,
+  HOLDING_OPEN, 
+  PULSE_LOCK_HIGH,
+  PULSE_LOCK_LOW,
+  HOLDING_LOCKED  
+};
 
-    // SERVO: 0 means we want to be locked, 1 means we want to be open.
-    int servoTargetState = 0; 
+// SERVO: 0 means we want to be locked, 1 means we want to be open.
+int servoTargetState = 0; 
 
-    // SERVO: Variable to hold the current SERVOstate
-    // Let's start in the locked position.
-    ServoState currentServoState = HOLDING_LOCKED;
+// SERVO: Variable to hold the current SERVOstate
+// Let's start in the locked position.
+ServoState currentServoState = HOLDING_LOCKED;
 
-    // SERVO: store the last time an event happened
-    unsigned long previousMicros = 0;
-    unsigned long previousMillis = 0;
+// SERVO: store the last time an event happened
+unsigned long previousMicros = 0;
+unsigned long previousMillis = 0;
 
-    // for DEMONSTRATION: timer to toggle the servo in demonstration
-    unsigned long previousToggleMillis = 0;
+// for DEMONSTRATION: timer to toggle the servo in demonstration
+unsigned long previousToggleMillis = 0;
 
 //KeyPad Setup_____________________________________
   // Store each number pressed
-    char passInput[5];
-    int input = 0;
-    char approvedPass[5];
-    bool passwordSet = false;
+char passInput[5];
+int input = 0;
+char approvedPass[5];
+bool passwordSet = false;
 
+// Key mapping for the 4x3 keypad
+char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
 
-  // Key mapping for the 4x3 keypad
-  char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
-
-  // Voltage ranges
-  const double voltages[][2] = {
-    {4.900, 4.910},   // '1' 
-    {4.840, 4.850},   // '2' 
-    {4.730, 4.736},   // '3' 
-    {4.795, 4.800},   // '4' 
-    {4.741, 4.746},   // '5' 
-    {4.620, 4.638},   // '6' 
-    {4.638, 4.655},   // '7' 
-    {4.584, 4.600},   // '8' 
-    {4.480, 4.492},   // '9' 
-    {4.420, 4.440},   // '*' 
-    {4.365, 4.400},   // '0' 
-    {4.270, 4.300}    // '#' 
-  };
+// Voltage ranges
+const double voltages[][2] = {
+  {4.900, 4.910},   // '1' 
+  {4.840, 4.850},   // '2' 
+  {4.730, 4.736},   // '3' 
+  {4.795, 4.800},   // '4' 
+  {4.741, 4.746},   // '5' 
+  {4.620, 4.638},   // '6' 
+  {4.638, 4.655},   // '7' 
+  {4.584, 4.600},   // '8' 
+  {4.480, 4.492},   // '9' 
+  {4.420, 4.440},   // '*' 
+  {4.365, 4.400},   // '0' 
+  {4.270, 4.300}    // '#' 
+};
 
 // These variables are added to replace delay() with a non-blocking timer.
 unsigned long lastKeypressMillis = 0;
@@ -69,16 +68,17 @@ const unsigned long KEYPAD_DEBOUNCE_DELAY = 300;
 void setup() {
   Serial.begin(9600);
   //Keypad input_________________________________
-    //Prompts the user to input password
-    Serial.println("Set passcode: "); 
+  //Prompts the user to input password
+  Serial.println("Set passcode: "); 
 
   //Servo Motor__________________________________
-    // Set the Servo output pin as an output
-    pinMode(outputPinServo, OUTPUT);
-    // Initialize timers
-    previousMicros = micros();
-    previousMillis = millis();
+  // Set the Servo output pin as an output
+  pinMode(outputPinServo, OUTPUT);
+  // Initialize timers
+  previousMicros = micros();
+  previousMillis = millis();
 }
+
 //Servo Functions_____________________________________________________
   // This function sets the TARGET for the state machine.
   void lockServo() {
@@ -100,8 +100,7 @@ void setup() {
     }
   }
 
-
-//Detect if Servo is blocked and revert back to previous position
+// Detect if Servo is blocked and revert back to previous position
 void return_motor()
 {
   //Read the voltage to determine if it is blocked(Pin A0)
@@ -114,7 +113,7 @@ void return_motor()
   if (voltagedrop > threshold)
   {
     Serial.print("Servo Motor is blocked.");  
-    if (currentServoState == 1)
+    if (servoTargetState == 1)
     {
       lockServo();
     }
@@ -126,29 +125,29 @@ void return_motor()
 }
 
 //EEPROM Functions_________________________________________________
-  unsigned char EEPROM_read(unsigned int uiAddress) { 
-    /* Wait for completion of previous write */ 
-    while(EECR & (1<<EEPE)) ; 
-    /* Set up address register */ 
-    EEAR = uiAddress; 
-    /* Start eeprom read by writing EERE */ 
-    EECR |= (1<<EERE); 
-    /* Return data from Data Register */ 
-    return EEDR; 
-  }
+unsigned char EEPROM_read(unsigned int uiAddress) { 
+  /* Wait for completion of previous write */ 
+  while(EECR & (1<<EEPE)) ; 
+  /* Set up address register */ 
+  EEAR = uiAddress; 
+  /* Start eeprom read by writing EERE */ 
+  EECR |= (1<<EERE); 
+  /* Return data from Data Register */ 
+  return EEDR; 
+}
 
-  void EEPROM_write(unsigned int uiAddress, unsigned char ucData) {
-    /* Wait for completion of previous write */ while(EECR & (1<<EEPE)) ; 
-    /* Set up address and Data Registers */ 
-    EEAR = uiAddress; EEDR = ucData; 
+void EEPROM_write(unsigned int uiAddress, unsigned char ucData) {
+  /* Wait for completion of previous write */ while(EECR & (1<<EEPE)) ; 
+  /* Set up address and Data Registers */ 
+  EEAR = uiAddress; EEDR = ucData; 
 
-    cli(); //disable interrupts
-    /* Write logical one to EEMPE */ 
-    EECR |= (1<<EEMPE); 
-    /* Start eeprom write by setting EEPE */ 
-    EECR |= (1<<EEPE); 
-    sei(); //enable interrupts
-    }
+  cli(); //disable interrupts
+  /* Write logical one to EEMPE */ 
+  EECR |= (1<<EEMPE); 
+  /* Start eeprom write by setting EEPE */ 
+  EECR |= (1<<EEPE); 
+  sei(); //enable interrupts
+}
 
 void loop() {
   // This check ensures the keypad is only read if 300ms have passed since the last press.
@@ -202,7 +201,6 @@ void loop() {
       }
     }
   }
-
 
   // The servo state machine has to be part of this loop here.
   unsigned long currentMicros = micros();
