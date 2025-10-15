@@ -1,4 +1,12 @@
 //Servo Set-up___________________________________________
+unsigned long previousSerialMillis = 0;
+const long serialInterval = 800; // Print every 1000 ms, and check if it's obstructed that often too
+int obstructionThreshold = 120;
+// SERVO: 0 means we want to be locked, 1 means we want to be open.
+int servoIntendedState = 0;
+bool isObstructed = false;
+int anval;
+
 // SERVO: Define the pin for where the servo plugs in
 const int outputPinServo = 9;
 
@@ -66,7 +74,7 @@ unsigned long lastKeypressMillis = 0;
 const unsigned long KEYPAD_DEBOUNCE_DELAY = 300;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   //Keypad input_________________________________
   //Prompts the user to input password
   Serial.println("Set passcode: "); 
@@ -81,9 +89,6 @@ void setup() {
   // Initialize timers
   previousMicros = micros();
   previousMillis = millis();
-
-  //Set anVal = 0
-  float anval = 0;
 }
 
 //Servo Functions_____________________________________________________
@@ -109,7 +114,7 @@ void setup() {
 
 void obstructionReturn() {
   anval = analogRead(A0);
-  Serial.println(anval);
+  // Serial.println(anval);
 
   // Check if an obstruction has just appeared
   if (anval > obstructionThreshold && !isObstructed) {
@@ -269,5 +274,11 @@ void loop() {
       }
     break;
   }
-  obstructionReturn();
+
+  if (millis() - previousSerialMillis >= serialInterval) {
+    previousSerialMillis = millis(); // Reset the print timer
+    // anval = analogRead(A0);
+    // Serial.println(anval);
+    obstructionReturn();
+  }
 }
