@@ -74,9 +74,16 @@ void setup() {
   //Servo Motor__________________________________
   // Set the Servo output pin as an output
   pinMode(outputPinServo, OUTPUT);
+
+  pinMode(A0, INPUT); //Set pin A0, as arduino side of stunt resistor
+  // pinMode(A1, INPUT); //Set pin A1, as ground side of stunt resistor
+
   // Initialize timers
   previousMicros = micros();
   previousMillis = millis();
+
+  //Set anVal = 0
+  float anval = 0;
 }
 
 //Servo Functions_____________________________________________________
@@ -100,29 +107,31 @@ void setup() {
     }
   }
 
-// Detect if Servo is blocked and revert back to previous position
-void return_motor()
-{
-  //Read the voltage to determine if it is blocked(Pin A0)
-  int threshold = 120;
-  int voltage_high = analogRead(A0); //servo side of shunt resistor
-  int voltage_low = analogRead(A1); //arduino side of shunt resistor
-  int voltagedrop = voltage_high - voltage_low;
+void obstructionReturn() {
+  anval = analogRead(A0);
+  Serial.println(anval);
 
-  //Revert back to previous state if blocked
-  if (voltagedrop > threshold)
-  {
-    Serial.print("Servo Motor is blocked.");  
-    if (servoTargetState == 1)
-    {
-      lockServo();
+  // Check if an obstruction has just appeared
+  if (anval > obstructionThreshold && !isObstructed) {
+    isObstructed = true; // Set the flag so this only runs once
+    Serial.println("Obstruction Detected! Reversing.");
+    
+    // Reverse the current target state
+    if (servoTargetState == 1) {
+      servoTargetState = 0; // If moving open, now move to lock
+    } else {
+      servoTargetState = 1; // If moving to lock, now move to open
     }
-    else
-    {
-      openServo();
-    }
+  } 
+  // Check if an obstruction has just been removed
+  else if (anval <= obstructionThreshold && isObstructed) {
+    isObstructed = false; // Clear the flag
+    Serial.println("Obstruction Cleared. Returning to original position.");
+    
+    // Restore the target state to the original intended state
+    servoTargetState = servoIntendedState;
   }
-}
+}  
 
 //EEPROM Functions_________________________________________________
 unsigned char EEPROM_read(unsigned int uiAddress) { 
@@ -260,5 +269,5 @@ void loop() {
       }
     break;
   }
-  return_motor();
+  obstructionReturn();
 }
