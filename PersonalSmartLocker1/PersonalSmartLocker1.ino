@@ -1,7 +1,7 @@
 //Servo Set-up___________________________________________
 unsigned long previousSerialMillis = 0;
-const long serialInterval = 800; // Print every 1000 ms, and check if it's obstructed that often too
-int obstructionThreshold = 120;
+const long serialInterval = 200; // Print every 1000 ms, and check if it's obstructed that often too
+int obstructionThreshold = 60;
 // SERVO: 0 means we want to be locked, 1 means we want to be open.
 int servoIntendedState = 0;
 bool isObstructed = false;
@@ -301,8 +301,8 @@ void loop() {
 
   if (millis() - previousSerialMillis >= serialInterval) {
     previousSerialMillis = millis(); // Reset the print timer
-    // anval = analogRead(A0);
-    // Serial.println(anval);
+     anval = analogRead(A0);
+     Serial.println(anval);
     obstructionReturn();
   }
 }
