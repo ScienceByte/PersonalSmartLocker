@@ -7,14 +7,18 @@ int servoIntendedState = 0;
 bool isObstructed = false;
 int anval;
 
+const int maxPulseNum = 50;
+int curPulseNum = 0;
+
+
 // SERVO: Define the pin for where the servo plugs in
 const int outputPinServo = 9;
 
 // SERVO: Define the time intervals in microseconds for the pulses for servo control
-const unsigned long pulseOpenHighTime = 2500;
-const unsigned long pulseOpenLowTime = 17500;
-const unsigned long pulseLockHighTime = 500;
-const unsigned long pulseLockLowTime = 19500;
+const unsigned long pulseOpenHighTime = 2000;
+const unsigned long pulseOpenLowTime = 18000;
+const unsigned long pulseLockHighTime = 600;
+const unsigned long pulseLockLowTime = 19400;
 
 // SERVO: Define the delay interval in milliseconds between pulse sequences for servo control
 const unsigned long delayTime = 500;
@@ -55,18 +59,18 @@ char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
 
 // Voltage ranges
 const double voltages[][2] = {
-  {4.900, 4.910},   // '1' 
-  {4.840, 4.850},   // '2' 
-  {4.730, 4.736},   // '3' 
-  {4.795, 4.800},   // '4' 
-  {4.741, 4.746},   // '5' 
-  {4.620, 4.638},   // '6' 
-  {4.638, 4.655},   // '7' 
-  {4.584, 4.600},   // '8' 
-  {4.480, 4.492},   // '9' 
-  {4.420, 4.440},   // '*' 
-  {4.365, 4.400},   // '0' 
-  {4.270, 4.300}    // '#' 
+  {4.05, 4.15},   // '1' 
+  {3.75, 3.8},   // '2' 
+  {3.00, 3.18},   // '3' 
+  {3.40, 3.50},   // '4' 
+  {3.19, 3.25},   // '5' 
+  {2.75, 2.78},   // '6' 
+  {2.79, 2.85},   // '7' 
+  {2.55, 2.65},   // '8' 
+  {2.30, 2.40},   // '9' 
+  {2.15, 2.20},   // '*' 
+  {2.00, 2.10},   // '0' 
+  {1.80, 1.90}    // '#' 
 };
 
 // These variables are added to replace delay() with a non-blocking timer.
@@ -89,32 +93,39 @@ void setup() {
   // Initialize timers
   previousMicros = micros();
   previousMillis = millis();
+
+  lockServo();
 }
 
 //Servo Functions_____________________________________________________
   // This function sets the TARGET for the state machine.
   void lockServo() {
     servoTargetState = 0;
-    if (currentServoState == HOLDING_LOCKED)
-    {
-      currentServoState = PULSE_LOCK_HIGH;
-      previousMicros = micros();
-    }
+    servoIntendedState = 0;
+    Serial.println("lock servo");
+ //   if (currentServoState == HOLDING_LOCKED)
+   // {
+//      currentServoState = PULSE_LOCK_HIGH;
+//      previousMicros = micros();
+ //   }
   }
 
   // This function sets the TARGET for the state machine.
   void openServo() {
     servoTargetState = 1;
-    if (currentServoState == HOLDING_LOCKED)
-    {
-      currentServoState = PULSE_OPEN_HIGH;
-      previousMicros = micros();
-    }
+    servoIntendedState = 1;
+    Serial.println("open servo");
+
+ //   if (currentServoState == HOLDING_LOCKED)
+ //   {
+ //     currentServoState = PULSE_OPEN_HIGH;
+ //     previousMicros = micros();
+ //   }
   }
 
 void obstructionReturn() {
   anval = analogRead(A0);
-  // Serial.println(anval);
+  //Serial.println(anval);
 
   // Check if an obstruction has just appeared
   if (anval > obstructionThreshold && !isObstructed) {
@@ -165,9 +176,11 @@ void EEPROM_write(unsigned int uiAddress, unsigned char ucData) {
 
 void loop() {
   // This check ensures the keypad is only read if 300ms have passed since the last press.
+
   if (millis() - lastKeypressMillis > KEYPAD_DEBOUNCE_DELAY) {
     int keyPressed = analogRead(A5);
     double voltage = keyPressed * (5.0 / 1023.0);
+    //Serial.println(voltage);
 
     // Find which key matches the measured voltage
     for (int j = 0; j < 12; j++) {
@@ -219,7 +232,8 @@ void loop() {
   // The servo state machine has to be part of this loop here.
   unsigned long currentMicros = micros();
   unsigned long currentMillis = millis();
-  switch (currentServoState) {
+    switch (currentServoState) {
+      Serial.println(curPulseNum);
     case PULSE_OPEN_HIGH:
       digitalWrite(outputPinServo, HIGH);
       if (currentMicros - previousMicros >= pulseOpenHighTime) {
@@ -240,10 +254,16 @@ void loop() {
       if (servoTargetState == 0) { // check if the command is to lock
         currentServoState = PULSE_LOCK_HIGH; //will go do that ^
         previousMicros = currentMicros; 
+        curPulseNum = 0;
       }
       else{
-        currentServoState = PULSE_OPEN_HIGH;
-        previousMicros = currentMicros;
+
+        if(curPulseNum < maxPulseNum){
+          curPulseNum++;
+          currentServoState = PULSE_OPEN_HIGH;
+          previousMicros = currentMicros;
+        }
+
       }
       break;
 
@@ -267,10 +287,14 @@ void loop() {
       if (servoTargetState == 1) { // check if the command is to open.
         currentServoState = PULSE_OPEN_HIGH; // will go do that ^
         previousMicros = currentMicros; 
+        curPulseNum = 0;
       }
       else{
-        currentServoState = PULSE_LOCK_HIGH;
-        previousMicros = currentMicros;
+        if(curPulseNum < maxPulseNum){
+         curPulseNum++;
+          currentServoState = PULSE_LOCK_HIGH;
+          previousMicros = currentMicros;
+        }
       }
     break;
   }
