@@ -1,7 +1,7 @@
 //Servo Set-up___________________________________________
 unsigned long previousSerialMillis = 0;
 const long serialInterval = 200; // Print every 1000 ms, and check if it's obstructed that often too
-int obstructionThreshold = 60;
+int obstructionThreshold = 70;
 // SERVO: 0 means we want to be locked, 1 means we want to be open.
 int servoIntendedState = 0;
 bool isObstructed = false;
