@@ -233,7 +233,7 @@ void loop() {
   unsigned long currentMicros = micros();
   unsigned long currentMillis = millis();
     switch (currentServoState) {
-      Serial.println(curPulseNum);
+     // Serial.println(curPulseNum);
     case PULSE_OPEN_HIGH:
       digitalWrite(outputPinServo, HIGH);
       if (currentMicros - previousMicros >= pulseOpenHighTime) {
