@@ -1,18 +1,23 @@
 unsigned long previousSerialMillis = 0;
-const long serialInterval = 1200; // Print every 1000 ms, and check if it's obstructed that often too
+const long serialInterval = 4000; // Print, and check if it's obstructed that often too
 int obstructionThreshold = 100;
+
+
+
+const int maxPulseNum = 20;
+int curPulseNum = 0;
 
 // SERVO: Define the pin for where the servo plugs in
 const int outputPinServo = 9;
 
 // SERVO: Define the time intervals in microseconds for the pulses for servo control
-const unsigned long pulseOpenHighTime = 2500;
-const unsigned long pulseOpenLowTime = 17500;
-const unsigned long pulseLockHighTime = 500;
-const unsigned long pulseLockLowTime = 19500;
+const unsigned long pulseOpenHighTime = 2000;
+const unsigned long pulseOpenLowTime = 18000;
+const unsigned long pulseLockHighTime = 600;
+const unsigned long pulseLockLowTime = 19400;
 
 // SERVO: Define the delay interval in milliseconds between pulse sequences for servo control
-const unsigned long delayTime = 7000;
+const unsigned long delayTime = 1000;
 
 // SERVOstate machine FOR PWM, using enums for that.
 enum ServoState {
@@ -45,13 +50,14 @@ int anval;
 
 void setup() {
   // Set the Servo output pin as an output
-  Serial.begin(57600);
+  Serial.begin(115200);
   pinMode(outputPinServo, OUTPUT);
   pinMode(A0, INPUT);
   // Initialize timers
   previousMicros = micros();
   previousMillis = millis();
 
+  lockServo();
 }
 
 void loop() {
@@ -60,21 +66,21 @@ void loop() {
     previousSerialMillis = millis(); // Reset the print timer
     // anval = analogRead(A0);
     // Serial.println(anval);
-    obstructionReturn();
+    //obstructionReturn();
   }
 
 
   // DEMONSTRATION ~~
   // This is an example of openServo() and lockServo() being called
   // to be replaced with password checking logic.
-  //if (millis() - previousToggleMillis >= delayTime) { // 
-  //  if (servoTargetState == 0) {
-  //    openServo(); // Tell the servo to open
-  //  } else {
-  //    lockServo(); // Tell the servo to lock
-  //  }
-  //  previousToggleMillis = millis(); // Reset the toggle timer
-  //}
+  if (millis() - previousToggleMillis >= delayTime) { // 
+   if (servoTargetState == 0) {
+     openServo(); // Tell the servo to open
+   } else {
+     lockServo(); // Tell the servo to lock
+   }
+   previousToggleMillis = millis(); // Reset the toggle timer
+  }
   // END OF DEMONSTRATION ~~
 
 
@@ -103,10 +109,16 @@ void loop() {
       if (servoTargetState == 0) { // check if the command is to lock
         currentServoState = PULSE_LOCK_HIGH; //will go do that ^
         previousMicros = currentMicros; 
+        curPulseNum = 0;
       }
       else{
-        currentServoState = PULSE_OPEN_HIGH;
-        previousMicros = currentMicros;
+
+        if(curPulseNum < maxPulseNum){
+          curPulseNum++;
+          currentServoState = PULSE_OPEN_HIGH;
+          previousMicros = currentMicros;
+        }
+
       }
       break;
 
@@ -130,10 +142,14 @@ void loop() {
       if (servoTargetState == 1) { // check if the command is to open.
         currentServoState = PULSE_OPEN_HIGH; // will go do that ^
         previousMicros = currentMicros; 
+        curPulseNum = 0;
       }
       else{
-        currentServoState = PULSE_LOCK_HIGH;
-        previousMicros = currentMicros;
+        if(curPulseNum < maxPulseNum){
+          curPulseNum++;
+          currentServoState = PULSE_LOCK_HIGH;
+          previousMicros = currentMicros;
+        }
       }
     break;
   }
