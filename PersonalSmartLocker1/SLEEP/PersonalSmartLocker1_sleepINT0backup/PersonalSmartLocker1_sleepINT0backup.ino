@@ -1,7 +1,8 @@
+
 //Servo Set-up___________________________________________
 unsigned long previousSerialMillis = 0;
 const long serialInterval = 200; // Print every 1000 ms, and check if it's obstructed that often too
-int obstructionThreshold = 70;
+int obstructionThreshold = 100;
 // SERVO: 0 means we want to be locked, 1 means we want to be open.
 int servoIntendedState = 0;
 bool isObstructed = false;
@@ -66,16 +67,16 @@ char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
 // Voltage ranges
 const double voltages[][2] = {
   {4.05, 4.15},   // '1' 
-  {3.75, 3.8},   // '2' 
-  {3.00, 3.18},   // '3' 
+  {3.70, 3.8},   // '2' 
+  {3.00, 3.15},   // '3' 
   {3.40, 3.50},   // '4' 
-  {3.19, 3.25},   // '5' 
-  {2.75, 2.78},   // '6' 
-  {2.79, 2.85},   // '7' 
+  {3.17, 3.25},   // '5' 
+  {2.70, 2.74},   // '6' 
+  {2.74, 2.77},   // '7' 
   {2.55, 2.65},   // '8' 
-  {2.30, 2.40},   // '9' 
-  {2.15, 2.20},   // '*' 
-  {2.00, 2.10},   // '0' 
+  {2.28, 2.40},   // '9' 
+  {2.10, 2.20},   // '*' 
+  {2.00, 2.08},   // '0' 
   {1.80, 1.90}    // '#' 
 };
 
@@ -101,53 +102,55 @@ void setup() {
   previousMillis = millis();
 
   //SLEEP mode pin. Digital Pin 2
-  pinMode(wakeUpPin, INPUT_PULLUP); // Set D2 as an input, this is wired to a pushbutton which is wired with a pullup resistor.
+  pinMode(wakeUpPin, INPUT); // Set D2 as an input, this is wired to a pushbutton which is wired with a pullup resistor.
   //SLEEP mode mask creating
-  EICRA = EICRA & ~((1<<ISC01)||(1<<ISC00)); // interrupt on low level of INT0. since only level interrupt can be a wake up signal for INT0 anyway.
+  EICRA = EICRA & ~((1<<ISC01)|(1<<ISC00)); // interrupt on low level of INT0. since only level interrupt can be a wake up signal for INT0 anyway.
   //ISC00 and ISC01 should both be set to 0. this creates a mask for ISC01 and ISC00 and uses it to clear those two values
-
-
-
 
   lockServo();
 }
 
 //SLEEP functions
 ISR(INT0_vect){ 
-  EIMSK &= ~(1<<INT0); // external interrupt disable (INT0)
   justWoke = true;
 }
 
-void goToSleep(){
-  EIMSK |= (1<<INT0); // external interrupt enable on INT0
-  //set_sleep_mode(SLEEP_MODE_PWR_DOWN); // choose power down mode
-  SMCR = (SMCR & ~(1<<SM0) | (1<<SM2) | (1<<SM1)); 
+void goToSleep() {
+  // Simple guard - if already LOW, abort
+  // NOTE: This check happens BEFORE cli(), slightly less safe but simpler test
+  if (digitalRead(wakeUpPin) == LOW) {
+     Serial.println("Pin already LOW, aborting sleep cycle.");
+     Serial.flush();
+     // Reset flag just in case it got set erratically
+     justWoke = false;
+     return;
+  }
 
-  //set SM2 to 1
-  //set SM1 to 1
-  //set SM0 to 0
-  cli(); //__asm__ __volatile__("cli")
+  Serial.println("Entering Standby Mode...");
+  Serial.flush();
 
-//sleep now
-do{
-//sleep_enable(); 
-	SMCR |= (1<<SE);
-//_SLEEP_CONTROL_REG |= (uint8_t)_SLEEP_ENABLE_MASK;   \
-	sei(); //__asm__ __volatile__("sei")
+  cli(); // Disable interrupts
 
-//    sleep_cpu();     
-    __asm__ __volatile__ ( "sleep" "\n\t" :: );   
-  //asm("SLEEP"); //this may have worked too but not used
+  // Set sleep mode to STANDBY (110)
+  SMCR = (SMCR & ~(1 << SM0)) | (1 << SM2) | (1 << SM1);
 
- //   sleep_disable(); 
-	SMCR &= ~(1<<SE);
-// _SLEEP_CONTROL_REG &= (uint8_t)(~_SLEEP_ENABLE_MASK);  \
+  EIMSK |= (1 << INT0); // Enable INT0
 
-}while(0);
+  // Atomic sleep sequence
+  do {
+    SMCR |= (1 << SE); // Enable Sleep
+    sei();             // Interrupts ON for one cycle
+    __asm__ __volatile__("sleep" ::); // Sleep Now
+    // --- WAKE UP --- (Interrupts OFF)
+    SMCR &= ~(1 << SE); // Disable Sleep
+  } while (0);
 
-sei(); //reenable interrupts
+  // Note: We are NOT disabling EIMSK here in the minimal test
+
+  sei(); // Re-enable interrupts
+  Serial.println("...Woke up from sleep function."); // Debug message
+  Serial.flush();
 }
-
 
 //Servo Functions_____________________________________________________
   // This function sets the TARGET for the state machine.
@@ -238,13 +241,17 @@ void loop() {
     
     // Reset the flag
     justWoke = false; 
+
+      EIMSK &= ~(1<<INT0); // external interrupt disable (INT0)
+
   }
 
 
   if (millis() - lastKeypressMillis > KEYPAD_DEBOUNCE_DELAY) {
     int keyPressed = analogRead(A5);
     double voltage = keyPressed * (5.0 / 1023.0);
-    Serial.println(digitalRead(2));
+    // Serial.println("voltage:");
+    // Serial.println(voltage);
 
     // Find which key matches the measured voltage
     for (int j = 0; j < 12; j++) {
@@ -371,7 +378,8 @@ void loop() {
   if (millis() - previousSerialMillis >= serialInterval) {
     previousSerialMillis = millis(); // Reset the print timer
      anval = analogRead(A0);
-     Serial.println(anval);
+      // Serial.println("anval:");
+      // Serial.println(anval);
     obstructionReturn();
   }
 }
