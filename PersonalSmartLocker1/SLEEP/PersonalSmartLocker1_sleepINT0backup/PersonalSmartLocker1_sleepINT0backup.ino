@@ -136,7 +136,6 @@ void goToSleep() {
 
   EIMSK |= (1 << INT0); // Enable INT0
 
-  // Atomic sleep sequence
   do {
     SMCR |= (1 << SE); // Enable Sleep
     sei();             // Interrupts ON for one cycle
@@ -145,8 +144,7 @@ void goToSleep() {
     SMCR &= ~(1 << SE); // Disable Sleep
   } while (0);
 
-  // Note: We are NOT disabling EIMSK here in the minimal test
-
+//haven't disabled EIMSK not immediately necessary
   sei(); // Re-enable interrupts
   Serial.println("...Woke up from sleep function."); // Debug message
   Serial.flush();
