@@ -59,18 +59,18 @@ char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
 
 // Voltage ranges
 const double voltages[][2] = {
-  {4.05, 4.15},   // '1' 
-  {3.75, 3.8},   // '2' 
-  {3.00, 3.18},   // '3' 
-  {3.40, 3.50},   // '4' 
-  {3.19, 3.25},   // '5' 
-  {2.75, 2.78},   // '6' 
-  {2.79, 2.85},   // '7' 
-  {2.55, 2.65},   // '8' 
-  {2.30, 2.40},   // '9' 
-  {2.15, 2.20},   // '*' 
-  {2.00, 2.10},   // '0' 
-  {1.80, 1.90}    // '#' 
+  {4.900, 4.910},   // '1' 
+  {4.840, 4.850},   // '2' 
+  {4.730, 4.736},   // '3' 
+  {4.795, 4.800},   // '4' 
+  {4.741, 4.746},   // '5' 
+  {4.620, 4.638},   // '6' 
+  {4.638, 4.655},   // '7' 
+  {4.584, 4.600},   // '8' 
+  {4.480, 4.492},   // '9' 
+  {4.420, 4.440},   // '*' 
+  {4.365, 4.400},   // '0' 
+  {4.270, 4.300}    // '#' 
 };
 
 // These variables are added to replace delay() with a non-blocking timer.
@@ -307,15 +307,3 @@ void loop() {
   }
 }
 
-attachInterrupt(digitalPinInterrupt(interruptPin), powerDownMode, CHANGE);
-//Use interupts and test it by hooking up the arduino again and printing the statement if the loop is true
-void powerDownMode()
-{
-  Serial.println("Going to sleep"); //prints the statement when it calls this function
-  SMCR = (1 << SE);  //Enables sleep mode by setting bit 0 of SMCR to 1
-  SMCR |= (1 << SM1);  //Sets bit 2 of SMCR to 1
-
-  EICRA |= (1 << ISC00); //Sets bit 0 of EICRA to 1
-  EICRA &= ~(1 << ISC01); //Sets bit 1 of EICRA to 0
-  EIMSK |= (1 << INT0); //Enables INT0
-}
