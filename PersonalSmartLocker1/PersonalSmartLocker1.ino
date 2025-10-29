@@ -282,3 +282,16 @@ void loop() {
     obstructionReturn();
   }
 }
+
+attachInterrupt(digitalPinInterrupt(interruptPin), powerDownMode, CHANGE);
+//Use interupts and test it by hooking up the arduino again and printing the statement if the loop is true
+void powerDownMode()
+{
+  Serial.println("Going to sleep"); //prints the statement when it calls this function
+  SMCR = (1 << SE);  //Enables sleep mode by setting bit 0 of SMCR to 1
+  SMCR |= (1 << SM1);  //Sets bit 2 of SMCR to 1
+
+  EICRA |= (1 << ISC00); //Sets bit 0 of EICRA to 1
+  EICRA &= ~(1 << ISC01); //Sets bit 1 of EICRA to 0
+  EIMSK |= (1 << INT0); //Enables INT0
+}
