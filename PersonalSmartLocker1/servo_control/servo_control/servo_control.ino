@@ -3,7 +3,6 @@ const long serialInterval = 4000; // Print, and check if it's obstructed that of
 int obstructionThreshold = 100;
 
 
-
 const int maxPulseNum = 20;
 int curPulseNum = 0;
 
