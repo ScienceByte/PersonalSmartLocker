@@ -242,13 +242,16 @@ void loop() {
     
     // Reset the flag
     justWoke = false; 
+
+    // Manually clear the Pin Change Interrupt Flag 1 by writing a 1 to it.
+    PCIFR |= (1 << PCIF1);
   }
 
 
   if (millis() - lastKeypressMillis > KEYPAD_DEBOUNCE_DELAY) {
     int keyPressed = analogRead(A5);
     double voltage = keyPressed * (5.0 / 1023.0);
-    //Serial.println(voltage);
+    Serial.println(voltage);
 
     // Find which key matches the measured voltage
     for (int j = 0; j < 12; j++) {
@@ -298,7 +301,7 @@ void loop() {
   }
   if (millis() - lastKeypressMillis > SLEEP_TIMEOUT) { //if it's been idle for more than the SLEEP_TIMEOUT
     Serial.println("sleep");
-    Serial.flush(); //wait for printing to finish
+    Serial.flush(); //wait for printing to finish, so I know it has gone to sleep
     goToSleep();
   }
 

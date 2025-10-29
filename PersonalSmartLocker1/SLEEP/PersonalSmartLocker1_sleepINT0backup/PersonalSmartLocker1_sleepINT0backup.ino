@@ -101,9 +101,10 @@ void setup() {
   previousMillis = millis();
 
   //SLEEP mode pin. Digital Pin 2
-  pinMode(wakeUpPin, INPUT); // Set D2 as an input
+  pinMode(wakeUpPin, INPUT_PULLUP); // Set D2 as an input, this is wired to a pushbutton which is wired with a pullup resistor.
   //SLEEP mode mask creating
-  EICRA |= (1<<ISC01)|(1<<ISC00); // interrupt on rising edge of INT0
+  EICRA = EICRA & ~((1<<ISC01)||(1<<ISC00)); // interrupt on low level of INT0. since only level interrupt can be a wake up signal for INT0 anyway.
+  //ISC00 and ISC01 should both be set to 0. this creates a mask for ISC01 and ISC00 and uses it to clear those two values
 
 
 
@@ -243,7 +244,7 @@ void loop() {
   if (millis() - lastKeypressMillis > KEYPAD_DEBOUNCE_DELAY) {
     int keyPressed = analogRead(A5);
     double voltage = keyPressed * (5.0 / 1023.0);
-    Serial.println(voltage);
+    Serial.println(digitalRead(2));
 
     // Find which key matches the measured voltage
     for (int j = 0; j < 12; j++) {
@@ -293,6 +294,7 @@ void loop() {
   }
   if (millis() - lastKeypressMillis > SLEEP_TIMEOUT) { //if it's been idle for more than the SLEEP_TIMEOUT
     Serial.println("sleep");
+    Serial.flush(); //waits until message is sent then goes to sleep
     goToSleep();
   }
 
