@@ -108,7 +108,7 @@ void setup() {
   //ISC00 and ISC01 should both be set to 0. this creates a mask for ISC01 and ISC00 and uses it to clear those two values
 
 pinMode(A3, INPUT);
-pinMode(9, OUTPUT);
+pinMode(8, OUTPUT);
 
 
   lockServo();
@@ -258,13 +258,14 @@ void loop() {
     //Check if battery is running low
     int batteryLife = analogRead(A3);
     double batteryVoltage = batteryLife * (5.0 / 1023.0);
+    Serial.println(batteryVoltage);
     if (batteryVoltage <= 3.27)
     {
-      digitalWrite(9, HIGH);
+      digitalWrite(8, HIGH);
     }
     else 
     {
-      digitalWrite(9, LOW);
+      digitalWrite(8, LOW);
     }
 
     // Find which key matches the measured voltage
