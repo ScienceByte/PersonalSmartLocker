@@ -105,7 +105,8 @@ void setup() {
   //SLEEP mode mask creating
   EICRA |= (1<<ISC01)|(1<<ISC00); // interrupt on rising edge of INT0
 
-
+pinMode(A3, INPUT);
+pinMode(9, OUTPUT);
 
 
   lockServo();
@@ -248,9 +249,13 @@ void loop() {
     //Check if battery is running low
     int batteryLife = analogRead(A3);
     double batteryVoltage = batteryLife * (5.0 / 1023.0);
-    if (batteryVoltage <= 4)
+    if (batteryVoltage <= 3.27)
     {
-
+      digitalWrite(9, HIGH);
+    }
+    else 
+    {
+      digitalWrite(9, LOW);
     }
 
     // Find which key matches the measured voltage
