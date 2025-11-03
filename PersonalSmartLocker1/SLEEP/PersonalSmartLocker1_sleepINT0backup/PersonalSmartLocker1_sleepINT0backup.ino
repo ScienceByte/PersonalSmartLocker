@@ -107,6 +107,10 @@ void setup() {
   EICRA = EICRA & ~((1<<ISC01)|(1<<ISC00)); // interrupt on low level of INT0. since only level interrupt can be a wake up signal for INT0 anyway.
   //ISC00 and ISC01 should both be set to 0. this creates a mask for ISC01 and ISC00 and uses it to clear those two values
 
+pinMode(A3, INPUT);
+pinMode(9, OUTPUT);
+
+
   lockServo();
 }
 
@@ -250,6 +254,18 @@ void loop() {
     double voltage = keyPressed * (5.0 / 1023.0);
     // Serial.println("voltage:");
     // Serial.println(voltage);
+
+    //Check if battery is running low
+    int batteryLife = analogRead(A3);
+    double batteryVoltage = batteryLife * (5.0 / 1023.0);
+    if (batteryVoltage <= 3.27)
+    {
+      digitalWrite(9, HIGH);
+    }
+    else 
+    {
+      digitalWrite(9, LOW);
+    }
 
     // Find which key matches the measured voltage
     for (int j = 0; j < 12; j++) {
