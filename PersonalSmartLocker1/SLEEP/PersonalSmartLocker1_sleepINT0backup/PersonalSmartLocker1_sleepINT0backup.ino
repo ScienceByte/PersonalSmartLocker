@@ -1,8 +1,30 @@
 
+//used to initialize pins that control the RED, YELLOW, and GREEN LEDs
+int POWER_LED_PIN = 8;//POWER_LED_PIN 8
+int YELLOW_LED_PIN = 7; //YELLOW_LED_PIN 7
+int GRN_LED_PIN = 6; //GRN_LED_PIN 6
+
+bool yellowBlinkState = LOW; //used for the blinking of yellow LED
+bool greenBlinkState = LOW; //used for green blinking
+
+// states for LED status
+enum LEDState {
+  SET_PASSWORD,     // solid green and yellow
+  IDLE,             // All lights off, waiting for input
+  TYPING,           // yellow solid (flickers on keypress)
+  CORRECT_PASSWORD, // solid green
+  WRONG_PASSWORD    // yellow blinks rapidly
+};
+
+LEDState currentLEDstate = SET_PASSWORD; // Start in setup mode
+
+
+
 //Servo Set-up___________________________________________
 unsigned long previousSerialMillis = 0;
 const long serialInterval = 200; // Print every 1000 ms, and check if it's obstructed that often too
 int obstructionThreshold = 100;
+
 // SERVO: 0 means we want to be locked, 1 means we want to be open.
 int servoIntendedState = 0;
 bool isObstructed = false;
@@ -86,9 +108,6 @@ const unsigned long KEYPAD_DEBOUNCE_DELAY = 300;
 
 void setup() {
   Serial.begin(115200);
-  //Keypad input_________________________________
-  //Prompts the user to input password
-  Serial.println("Set passcode: "); 
 
   //Servo Motor__________________________________
   // Set the Servo output pin as an output
@@ -108,7 +127,17 @@ void setup() {
   //ISC00 and ISC01 should both be set to 0. this creates a mask for ISC01 and ISC00 and uses it to clear those two values
 
 pinMode(A3, INPUT);
-pinMode(8, OUTPUT);
+
+pinMode(POWER_LED_PIN, OUTPUT); //POWER_LED_PIN 8
+pinMode(YELLOW_LED_PIN, OUTPUT); //YELLOW_LED_PIN 7
+pinMode(GRN_LED_PIN, OUTPUT); //GRN_LED_PIN 6
+
+  //Keypad input_________________________________
+  //Prompts the user to input password
+  Serial.println("Set passcode: "); 
+  //turn on YELLOW and GREEN to signify it's set password mode
+  digitalWrite(GRN_LED_PIN, HIGH);
+  digitalWrite(YELLOW_LED_PIN, HIGH);
 
 
   lockServo();
@@ -250,29 +279,27 @@ void loop() {
 
 
   if (millis() - lastKeypressMillis > KEYPAD_DEBOUNCE_DELAY) {
+
     int keyPressed = analogRead(A5);
     double voltage = keyPressed * (5.0 / 1023.0);
     // Serial.println("voltage:");
     // Serial.println(voltage);
 
-    //Check if battery is running low
-    int batteryLife = analogRead(A3);
-    double batteryVoltage = batteryLife * (5.0 / 1023.0);
-    Serial.println(batteryVoltage);
-    if (batteryVoltage <= 3.27)
-    {
-      digitalWrite(8, HIGH);
-    }
-    else 
-    {
-      digitalWrite(8, LOW);
-    }
 
     // Find which key matches the measured voltage
     for (int j = 0; j < 12; j++) {
       if (voltage >= voltages[j][0] && voltage <= voltages[j][1]) {
         passInput[input] = KEYS[j];
         input++;
+
+        currentLEDstate = TYPING; //it's currently typing
+        digitalWrite(YELLOW_LED_PIN, HIGH); //yellow is solid on when awaiting full password enter
+        if(passwordSet){ //if password is already set, there should be no reason for green to be on when typing
+          digitalWrite(GRN_LED_PIN, LOW); //green led turns off now
+        }
+
+
+
         Serial.print("Key pressed: ");
         Serial.println(KEYS[j]);
         // The delay(300) is replaced by resetting the timer.
@@ -284,12 +311,14 @@ void loop() {
           Serial.println(passInput);
 
           if (!passwordSet) {
+
             // Save the password to EEPROM
             for (int i = 0; i < 4; i++) {
               EEPROM_write(i, passInput[i]);
             }
             passwordSet = true;
             Serial.println("Password is saved");
+            digitalWrite(GRN_LED_PIN, LOW); //green led turns off now
           } else {
             // Check password
             bool correct = true;
@@ -302,9 +331,15 @@ void loop() {
             if (correct) {
               Serial.println("Correct Password");
               openServo();
+              currentLEDstate = CORRECT_PASSWORD; //will now switch back to green
+              digitalWrite(GRN_LED_PIN, HIGH);
+              digitalWrite(YELLOW_LED_PIN, LOW);
+
             } else {
               Serial.println("Incorrect Password");
               lockServo();
+              digitalWrite(GRN_LED_PIN, LOW); //turn off green if wrong password
+              currentLEDstate = WRONG_PASSWORD; //will now allow the rapid blinking to begin
             }
           }
 
@@ -316,6 +351,10 @@ void loop() {
   }
   if (millis() - lastKeypressMillis > SLEEP_TIMEOUT) { //if it's been idle for more than the SLEEP_TIMEOUT
     Serial.println("sleep");
+    //shut off LEDs before sleeping
+    digitalWrite(POWER_LED_PIN, LOW);
+    digitalWrite(YELLOW_LED_PIN, LOW);
+    digitalWrite(GRN_LED_PIN, LOW);
     Serial.flush(); //waits until message is sent then goes to sleep
     goToSleep();
   }
@@ -391,10 +430,33 @@ void loop() {
   }
 
   if (millis() - previousSerialMillis >= serialInterval) {
+    if(currentLEDstate == WRONG_PASSWORD){
+      yellowBlinkState = !yellowBlinkState;
+      digitalWrite(YELLOW_LED_PIN, yellowBlinkState);
+    }
+    if((!passwordSet)&&(currentLEDstate == TYPING)){ //blink if setting password still
+      greenBlinkState = !greenBlinkState;
+      digitalWrite(GRN_LED_PIN, greenBlinkState);
+    }
+
     previousSerialMillis = millis(); // Reset the print timer
      anval = analogRead(A0);
       // Serial.println("anval:");
       // Serial.println(anval);
     obstructionReturn();
+
+    //Check if battery is running low. the serial interval here is for things that don't need to be continuously sampled
+    int batteryLife = analogRead(A3);
+    double batteryVoltage = batteryLife * (5.0 / 1023.0);
+    //Serial.println(batteryVoltage);
+    if (batteryVoltage <= 3.27)
+    {
+      digitalWrite(POWER_LED_PIN, HIGH);
+    }
+    else 
+    {
+      digitalWrite(POWER_LED_PIN, LOW);
+    }
+
   }
 }
