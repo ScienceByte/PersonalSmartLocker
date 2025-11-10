@@ -38,7 +38,8 @@ const unsigned long SLEEP_TIMEOUT = 30000; // 30 seconds of no keypress
 const int wakeUpPin = 2; // This is INT0 (Digital Pin 2)
 volatile bool justWoke = false; // Flag to run code once on wake-up
 
-
+//Password Setup
+bool reset = false;
 
 // SERVO: Define the pin for where the servo plugs in
 const int outputPinServo = 9;
@@ -277,7 +278,6 @@ void loop() {
 
   }
 
-
   if (millis() - lastKeypressMillis > KEYPAD_DEBOUNCE_DELAY) {
 
     int keyPressed = analogRead(A5);
@@ -298,12 +298,24 @@ void loop() {
           digitalWrite(GRN_LED_PIN, LOW); //green led turns off now
         }
 
-
-
         Serial.print("Key pressed: ");
         Serial.println(KEYS[j]);
         // The delay(300) is replaced by resetting the timer.
         lastKeypressMillis = millis();
+
+        //Check if user wants to reset password
+        if (KEYS[j] == '*')
+        {
+          if (!reset && passwordSet)
+          {
+            reset = true;
+            input = 0;
+          }
+        }
+        else if (reset)
+        {
+          reset = false;
+        }
 
         if (input == 4) {
           passInput[4] = '\0';
@@ -319,7 +331,8 @@ void loop() {
             passwordSet = true;
             Serial.println("Password is saved");
             digitalWrite(GRN_LED_PIN, LOW); //green led turns off now
-          } else {
+          }
+          else {
             // Check password
             bool correct = true;
             for (int i = 0; i < 4; i++) {
