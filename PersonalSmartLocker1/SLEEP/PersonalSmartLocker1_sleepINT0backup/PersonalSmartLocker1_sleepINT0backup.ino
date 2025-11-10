@@ -1,8 +1,15 @@
-
 //used to initialize pins that control the RED, YELLOW, and GREEN LEDs
 int POWER_LED_PIN = 8;//POWER_LED_PIN 8
 int YELLOW_LED_PIN = 7; //YELLOW_LED_PIN 7
 int GRN_LED_PIN = 6; //GRN_LED_PIN 6
+
+//Pin to send signal to transistor to turn on and off
+int Transistor_Pin = 10;
+const unsigned long TransistorLowTime = 10000;
+const unsigned long TransistorHighTime = 5000;
+unsigned long currentTransistorMillis = millis();
+unsigned long previousTransistorMillis = millis();
+bool Transistor_State = true;
 
 bool yellowBlinkState = LOW; //used for the blinking of yellow LED
 bool greenBlinkState = LOW; //used for green blinking
@@ -91,16 +98,16 @@ char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
 const double voltages[][2] = {
   {4.05, 4.15},   // '1' 
   {3.70, 3.8},   // '2' 
-  {3.00, 3.15},   // '3' 
-  {3.40, 3.50},   // '4' 
-  {3.17, 3.25},   // '5' 
-  {2.70, 2.74},   // '6' 
-  {2.74, 2.77},   // '7' 
-  {2.55, 2.65},   // '8' 
-  {2.28, 2.40},   // '9' 
-  {2.10, 2.20},   // '*' 
-  {2.00, 2.08},   // '0' 
-  {1.80, 1.90}    // '#' 
+  {3.00, 3.12},   // '3' 
+  {3.35, 3.50},   // '4' 
+  {3.13, 3.25},   // '5' 
+  {2.65, 2.69},   // '6' 
+  {2.70, 2.77},   // '7' 
+  {2.50, 2.65},   // '8' 
+  {2.20, 2.35},   // '9' 
+  {2.04, 2.15},   // '*' 
+  {1.90, 2.00},   // '0' 
+  {1.74, 1.85}    // '#' 
 };
 
 // These variables are added to replace delay() with a non-blocking timer.
@@ -121,6 +128,9 @@ void setup() {
   previousMicros = micros();
   previousMillis = millis();
 
+  //Initialize timer for transistor
+  previousTransistorMillis = millis();
+
   //SLEEP mode pin. Digital Pin 2
   pinMode(wakeUpPin, INPUT); // Set D2 as an input, this is wired to a pushbutton which is wired with a pullup resistor.
   //SLEEP mode mask creating
@@ -132,6 +142,7 @@ pinMode(A3, INPUT);
 pinMode(POWER_LED_PIN, OUTPUT); //POWER_LED_PIN 8
 pinMode(YELLOW_LED_PIN, OUTPUT); //YELLOW_LED_PIN 7
 pinMode(GRN_LED_PIN, OUTPUT); //GRN_LED_PIN 6
+pinMode(Transistor_Pin, OUTPUT); //Transistor pin
 
   //Keypad input_________________________________
   //Prompts the user to input password
@@ -139,6 +150,9 @@ pinMode(GRN_LED_PIN, OUTPUT); //GRN_LED_PIN 6
   //turn on YELLOW and GREEN to signify it's set password mode
   digitalWrite(GRN_LED_PIN, HIGH);
   digitalWrite(YELLOW_LED_PIN, HIGH);
+
+  //Test battery level to start
+  digitalWrite(Transistor_Pin, HIGH);
 
 
   lockServo();
@@ -355,7 +369,6 @@ void loop() {
               currentLEDstate = WRONG_PASSWORD; //will now allow the rapid blinking to begin
             }
           }
-
           input = 0;  // reset for next entry
         }
         break; // Exit the for-loop once a key is found
@@ -458,18 +471,40 @@ void loop() {
       // Serial.println(anval);
     obstructionReturn();
 
-    //Check if battery is running low. the serial interval here is for things that don't need to be continuously sampled
-    int batteryLife = analogRead(A3);
-    double batteryVoltage = batteryLife * (5.0 / 1023.0);
-    //Serial.println(batteryVoltage);
-    if (batteryVoltage <= 3.27)
+    currentTransistorMillis = millis();
+    if (Transistor_State)
     {
-      digitalWrite(POWER_LED_PIN, HIGH);
+      digitalWrite(Transistor_Pin, HIGH);
+      //Check if battery is running low. the serial interval here is for things that don't need to be continuously sampled
+      int batteryLife = analogRead(A3);
+      double batteryVoltage = batteryLife * (5.0 / 1023.0);
+      //Serial.println(batteryVoltage);
+      if (batteryVoltage <= 3.27)
+      {
+        digitalWrite(POWER_LED_PIN, HIGH);
+      }
+      else 
+      {
+        digitalWrite(POWER_LED_PIN, LOW);
+      }
+      if (currentTransistorMillis - previousTransistorMillis >= TransistorHighTime)
+      {
+        Transistor_State = false;
+        previousTransistorMillis = currentTransistorMillis;
+        digitalWrite(POWER_LED_PIN, LOW);
+        digitalWrite(Transistor_Pin, LOW);
+      }
     }
-    else 
+    else if (!Transistor_State)
     {
+      digitalWrite(Transistor_Pin, LOW);
       digitalWrite(POWER_LED_PIN, LOW);
-    }
 
+      if (currentTransistorMillis - previousTransistorMillis >= TransistorLowTime)
+      {
+        Transistor_State = true;
+        previousTransistorMillis = currentTransistorMillis;
+      }
+    }
   }
 }
