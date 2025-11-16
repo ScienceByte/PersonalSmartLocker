@@ -1,15 +1,8 @@
+
 //used to initialize pins that control the RED, YELLOW, and GREEN LEDs
 int POWER_LED_PIN = 8;//POWER_LED_PIN 8
 int YELLOW_LED_PIN = 7; //YELLOW_LED_PIN 7
 int GRN_LED_PIN = 6; //GRN_LED_PIN 6
-
-//Pin to send signal to transistor to turn on and off
-int Transistor_Pin = 10;
-const unsigned long TransistorLowTime = 10000;
-const unsigned long TransistorHighTime = 5000;
-unsigned long currentTransistorMillis = millis();
-unsigned long previousTransistorMillis = millis();
-bool Transistor_State = true;
 
 bool yellowBlinkState = LOW; //used for the blinking of yellow LED
 bool greenBlinkState = LOW; //used for green blinking
@@ -24,6 +17,18 @@ enum LEDState {
 };
 
 LEDState currentLEDstate = SET_PASSWORD; // Start in setup mode
+
+
+// overarching state machine to handle how program should respond to key presses
+enum personalState {
+  SET_PASSWORD,     // solid green and yellow
+  TYPING,           // yellow solid (flickers on keypress)
+  CORRECT_PASSWORD, // solid green
+  WRONG_PASSWORD    // yellow blinks rapidly
+};
+
+personalState currentPersonalState = SET_PASSWORD; // Start in setup mode
+
 
 
 
@@ -98,16 +103,16 @@ char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
 const double voltages[][2] = {
   {4.05, 4.15},   // '1' 
   {3.70, 3.8},   // '2' 
-  {3.00, 3.12},   // '3' 
-  {3.35, 3.50},   // '4' 
-  {3.13, 3.25},   // '5' 
-  {2.65, 2.69},   // '6' 
-  {2.70, 2.77},   // '7' 
-  {2.50, 2.65},   // '8' 
-  {2.20, 2.35},   // '9' 
-  {2.04, 2.15},   // '*' 
-  {1.90, 2.00},   // '0' 
-  {1.74, 1.85}    // '#' 
+  {3.00, 3.15},   // '3' 
+  {3.40, 3.50},   // '4' 
+  {3.17, 3.25},   // '5' 
+  {2.70, 2.74},   // '6' 
+  {2.74, 2.77},   // '7' 
+  {2.55, 2.65},   // '8' 
+  {2.28, 2.40},   // '9' 
+  {2.10, 2.20},   // '*' 
+  {2.00, 2.08},   // '0' 
+  {1.80, 1.90}    // '#' 
 };
 
 // These variables are added to replace delay() with a non-blocking timer.
@@ -128,9 +133,6 @@ void setup() {
   previousMicros = micros();
   previousMillis = millis();
 
-  //Initialize timer for transistor
-  previousTransistorMillis = millis();
-
   //SLEEP mode pin. Digital Pin 2
   pinMode(wakeUpPin, INPUT); // Set D2 as an input, this is wired to a pushbutton which is wired with a pullup resistor.
   //SLEEP mode mask creating
@@ -142,7 +144,6 @@ pinMode(A3, INPUT);
 pinMode(POWER_LED_PIN, OUTPUT); //POWER_LED_PIN 8
 pinMode(YELLOW_LED_PIN, OUTPUT); //YELLOW_LED_PIN 7
 pinMode(GRN_LED_PIN, OUTPUT); //GRN_LED_PIN 6
-pinMode(Transistor_Pin, OUTPUT); //Transistor pin
 
   //Keypad input_________________________________
   //Prompts the user to input password
@@ -151,11 +152,82 @@ pinMode(Transistor_Pin, OUTPUT); //Transistor pin
   digitalWrite(GRN_LED_PIN, HIGH);
   digitalWrite(YELLOW_LED_PIN, HIGH);
 
-  //Test battery level to start
-  digitalWrite(Transistor_Pin, HIGH);
-
 
   lockServo();
+}
+
+
+
+//overarching statemachine 
+// enum personalState {
+//   SET_PASSWORD,     // solid green and yellow
+//   TYPING,           // yellow solid (flickers on keypress)
+//   CORRECT_PASSWORD, // solid green
+//   WRONG_PASSWORD    // yellow blinks rapidly
+// };
+
+// personalState currentPersonalState = SET_PASSWORD; // Start in setup mode
+
+void handleBehaviorOnKeypress(){
+  switch(currentPersonalState){
+    case SET_PASSWORD:    // solid green and yellow
+    break;
+
+    case TYPING:           // yellow solid (flickers on keypress)
+      digitalWrite(YELLOW_LED_PIN, HIGH); //yellow is solid on when awaiting full password enter
+      if(passwordSet){ //if password is already set, there should be no reason for green to be on when typing
+        digitalWrite(GRN_LED_PIN, LOW); //green led turns off now
+      }
+
+
+        if (input == 4) { //if full password entered
+          passInput[4] = '\0';
+          Serial.print("Entered passcode: ");
+          Serial.println(passInput);
+
+          if (!passwordSet) {
+            // Save the password to EEPROM
+            for (int i = 0; i < 4; i++) {
+              EEPROM_write(i, passInput[i]);
+            }
+            passwordSet = true;
+            Serial.println("Password is saved");
+            digitalWrite(GRN_LED_PIN, LOW); //green led turns off now
+          }
+          else {
+            // Check password
+            bool correct = true;
+            for (int i = 0; i < 4; i++) {
+              if (passInput[i] != EEPROM_read(i)) {
+                correct = false;
+                break;
+              }
+            }
+            if (correct) {
+              Serial.println("Correct Password");
+              openServo();
+              currentLEDstate = CORRECT_PASSWORD; //will now switch back to green
+
+            } else {
+              Serial.println("Incorrect Password");
+              lockServo();
+              digitalWrite(GRN_LED_PIN, LOW); //turn off green if wrong password
+              currentLEDstate = WRONG_PASSWORD; //will now allow the rapid blinking to begin
+            }
+          }
+
+          input = 0;  // reset for next entry
+
+        }
+    break;
+
+    case CORRECT_PASSWORD: // solid green
+    break;
+
+    case WRONG_PASSWORD:    // yellow blinks rapidly
+    break;
+
+  }
 }
 
 //SLEEP functions
@@ -305,72 +377,12 @@ void loop() {
       if (voltage >= voltages[j][0] && voltage <= voltages[j][1]) {
         passInput[input] = KEYS[j];
         input++;
-
-        currentLEDstate = TYPING; //it's currently typing
-        digitalWrite(YELLOW_LED_PIN, HIGH); //yellow is solid on when awaiting full password enter
-        if(passwordSet){ //if password is already set, there should be no reason for green to be on when typing
-          digitalWrite(GRN_LED_PIN, LOW); //green led turns off now
-        }
-
         Serial.print("Key pressed: ");
         Serial.println(KEYS[j]);
         // The delay(300) is replaced by resetting the timer.
         lastKeypressMillis = millis();
 
-        //Check if user wants to reset password
-        if (KEYS[j] == '*')
-        {
-          if (!reset && passwordSet)
-          {
-            reset = true;
-            input = 0;
-          }
-        }
-        else if (reset)
-        {
-          reset = false;
-        }
-
-        if (input == 4) {
-          passInput[4] = '\0';
-          Serial.print("Entered passcode: ");
-          Serial.println(passInput);
-
-          if (!passwordSet) {
-
-            // Save the password to EEPROM
-            for (int i = 0; i < 4; i++) {
-              EEPROM_write(i, passInput[i]);
-            }
-            passwordSet = true;
-            Serial.println("Password is saved");
-            digitalWrite(GRN_LED_PIN, LOW); //green led turns off now
-          }
-          else {
-            // Check password
-            bool correct = true;
-            for (int i = 0; i < 4; i++) {
-              if (passInput[i] != EEPROM_read(i)) {
-                correct = false;
-                break;
-              }
-            }
-            if (correct) {
-              Serial.println("Correct Password");
-              openServo();
-              currentLEDstate = CORRECT_PASSWORD; //will now switch back to green
-              digitalWrite(GRN_LED_PIN, HIGH);
-              digitalWrite(YELLOW_LED_PIN, LOW);
-
-            } else {
-              Serial.println("Incorrect Password");
-              lockServo();
-              digitalWrite(GRN_LED_PIN, LOW); //turn off green if wrong password
-              currentLEDstate = WRONG_PASSWORD; //will now allow the rapid blinking to begin
-            }
-          }
-          input = 0;  // reset for next entry
-        }
+        handleBehaviorOnKeypress();
         break; // Exit the for-loop once a key is found
       }
     }
@@ -471,40 +483,18 @@ void loop() {
       // Serial.println(anval);
     obstructionReturn();
 
-    currentTransistorMillis = millis();
-    if (Transistor_State)
+    //Check if battery is running low. the serial interval here is for things that don't need to be continuously sampled
+    int batteryLife = analogRead(A3);
+    double batteryVoltage = batteryLife * (5.0 / 1023.0);
+    //Serial.println(batteryVoltage);
+    if (batteryVoltage <= 3.27)
     {
-      digitalWrite(Transistor_Pin, HIGH);
-      //Check if battery is running low. the serial interval here is for things that don't need to be continuously sampled
-      int batteryLife = analogRead(A3);
-      double batteryVoltage = batteryLife * (5.0 / 1023.0);
-      //Serial.println(batteryVoltage);
-      if (batteryVoltage <= 3.27)
-      {
-        digitalWrite(POWER_LED_PIN, HIGH);
-      }
-      else 
-      {
-        digitalWrite(POWER_LED_PIN, LOW);
-      }
-      if (currentTransistorMillis - previousTransistorMillis >= TransistorHighTime)
-      {
-        Transistor_State = false;
-        previousTransistorMillis = currentTransistorMillis;
-        digitalWrite(POWER_LED_PIN, LOW);
-        digitalWrite(Transistor_Pin, LOW);
-      }
+      digitalWrite(POWER_LED_PIN, HIGH);
     }
-    else if (!Transistor_State)
+    else 
     {
-      digitalWrite(Transistor_Pin, LOW);
       digitalWrite(POWER_LED_PIN, LOW);
-
-      if (currentTransistorMillis - previousTransistorMillis >= TransistorLowTime)
-      {
-        Transistor_State = true;
-        previousTransistorMillis = currentTransistorMillis;
-      }
     }
+
   }
 }
