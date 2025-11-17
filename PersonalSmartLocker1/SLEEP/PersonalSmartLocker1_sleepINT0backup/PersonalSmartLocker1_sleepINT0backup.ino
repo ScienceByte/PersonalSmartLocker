@@ -306,7 +306,6 @@ void loop() {
     // Find which key matches the measured voltage
     for (int j = 0; j < 12; j++) {
       if (voltage >= voltages[j][0] && voltage <= voltages[j][1]) {
-        digitalWrite(Transistor_Pin_Servo, HIGH); //Turn on servo motor transistor(Power On)\
 
         lastKeypressMillis = millis();
 
@@ -391,7 +390,7 @@ void loop() {
           }
           input = 0;  // reset for next entry
         }
-        digitalWrite(Transistor_Pin_Servo, LOW); //Turn off power to servo when no longer needed. 
+
         break; // Exit the for-loop once a key is found
       }
     }
@@ -405,6 +404,8 @@ void loop() {
     Serial.flush(); //waits until message is sent then goes to sleep
     goToSleep();
   }
+
+
 
   // The servo state machine has to be part of this loop here.
   unsigned long currentMicros = micros();
@@ -432,6 +433,8 @@ void loop() {
         currentServoState = PULSE_LOCK_HIGH; //will go do that ^
         previousMicros = currentMicros; 
         curPulseNum = 0;
+        digitalWrite(Transistor_Pin_Servo, HIGH);
+
       }
       else{
 
@@ -439,6 +442,9 @@ void loop() {
           curPulseNum++;
           currentServoState = PULSE_OPEN_HIGH;
           previousMicros = currentMicros;
+        }else{
+          digitalWrite(Transistor_Pin_Servo, LOW);
+
         }
 
       }
@@ -465,12 +471,16 @@ void loop() {
         currentServoState = PULSE_OPEN_HIGH; // will go do that ^
         previousMicros = currentMicros; 
         curPulseNum = 0;
+        digitalWrite(Transistor_Pin_Servo, HIGH);
       }
       else{
         if(curPulseNum < maxPulseNum){
          curPulseNum++;
           currentServoState = PULSE_LOCK_HIGH;
           previousMicros = currentMicros;
+        }else{
+          digitalWrite(Transistor_Pin_Servo, LOW);
+
         }
       }
     break;
