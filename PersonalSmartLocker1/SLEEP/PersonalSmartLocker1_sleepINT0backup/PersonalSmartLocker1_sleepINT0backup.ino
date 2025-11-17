@@ -27,7 +27,7 @@ enum LEDState {
   WRONG_PASSWORD    // yellow blinks rapidly
 };
 
-LEDState currentLEDstate = IDLE; // Start in idle mode //PASSWORD RESET
+LEDState currentLEDstate = SET_PASSWORD; // Start in idle mode //PASSWORD RESET
 
 //Servo Set-up___________________________________________
 unsigned long previousSerialMillis = 0;
@@ -91,7 +91,7 @@ unsigned long previousToggleMillis = 0;
 char passInput[5];
 int input = 0;
 char approvedPass[5];
-bool passwordSet = true; //start with assuming it's set for //PASSWORD RESET
+bool passwordSet = false; //start with assuming it's set for //PASSWORD RESET
 
 // Key mapping for the 4x3 keypad
 char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
@@ -360,7 +360,7 @@ void loop() {
             // Save the password to EEPROM
             for (int i = 0; i < 4; i++) {
               //encrypt password
-              char encrypted_password = passInput[i] * 3;
+              char encrypted_password = passInput[i] + 5;
               EEPROM_write(i, encrypted_password);
               Serial.println("Encrypted Passcode: ");
               Serial.println(EEPROM_read(i)); 
@@ -374,7 +374,7 @@ void loop() {
             bool correct = true;
             for (int i = 0; i < 4; i++) {
               //Check correct password against encrypted password
-              if (passInput[i] != (EEPROM_read(i) / 3)) {
+              if (passInput[i] != (EEPROM_read(i) - 5)) {
                 correct = false;
                 break;
               }
