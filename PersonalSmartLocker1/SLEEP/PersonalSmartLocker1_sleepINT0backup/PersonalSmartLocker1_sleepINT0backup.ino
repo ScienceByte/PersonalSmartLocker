@@ -98,18 +98,18 @@ char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
 
 // Voltage ranges
 const double voltages[][2] = {
-  {4.05, 4.15},   // '1' 
-  {3.70, 3.8},   // '2' 
-  {3.00, 3.12},   // '3' 
-  {3.35, 3.50},   // '4' 
-  {3.13, 3.25},   // '5' 
-  {2.65, 2.69},   // '6' 
-  {2.70, 2.77},   // '7' 
-  {2.50, 2.65},   // '8' 
-  {2.20, 2.35},   // '9' 
-  {2.04, 2.15},   // '*' 
-  {1.90, 2.00},   // '0' 
-  {1.74, 1.85}    // '#' 
+  {4.05, 4.15},   // '1'
+  {3.70, 3.80},   // '2'
+  {3.00, 3.15},   // '3'
+  {3.35, 3.50},   // '4'
+  {3.17, 3.25},   // '5'
+  {2.68, 2.75},   // '6'
+  {2.77, 2.90},   // '7'
+  {2.50, 2.63},   // '8'
+  {2.20, 2.35},   // '9'
+  {2.08, 2.15},   // '*'
+  {1.90, 2.05},   // '0'
+  {1.74, 1.87}    // '#'
 };
 
 // These variables are added to replace delay() with a non-blocking timer.
@@ -125,6 +125,8 @@ void setup() {
 
   pinMode(A0, INPUT); //Set pin A0, as arduino side of stunt resistor
   // pinMode(A1, INPUT); //Set pin A1, as ground side of stunt resistor
+
+  digitalWrite(Transistor_Pin_Servo, HIGH);
 
   // Initialize timers
   previousMicros = micros();
@@ -199,6 +201,7 @@ void goToSleep() {
   sei(); // Re-enable interrupts
   Serial.println("...Woke up from sleep function."); // Debug message
   Serial.flush();
+  digitalWrite(Transistor_Pin_Servo, HIGH);
 }
 
 //Servo Functions_____________________________________________________
@@ -357,8 +360,10 @@ void loop() {
             // Save the password to EEPROM
             for (int i = 0; i < 4; i++) {
               //encrypt password
-              char encrypted_password = passInput[i] * 5;
+              char encrypted_password = passInput[i] * 3;
               EEPROM_write(i, encrypted_password);
+              Serial.println("Encrypted Passcode: ");
+              Serial.println(EEPROM_read(i)); 
             }
             passwordSet = true;
             Serial.println("Password is saved");
@@ -369,7 +374,7 @@ void loop() {
             bool correct = true;
             for (int i = 0; i < 4; i++) {
               //Check correct password against encrypted password
-              if (passInput[i] != (EEPROM_read(i) / 5)) {
+              if (passInput[i] != (EEPROM_read(i) / 3)) {
                 correct = false;
                 break;
               }
@@ -397,6 +402,8 @@ void loop() {
   }
   if (millis() - lastKeypressMillis > SLEEP_TIMEOUT) { //if it's been idle for more than the SLEEP_TIMEOUT
     Serial.println("sleep");
+    //Shut off servo
+    digitalWrite(Transistor_Pin_Servo, LOW);
     //shut off LEDs before sleeping
     digitalWrite(POWER_LED_PIN, LOW);
     digitalWrite(YELLOW_LED_PIN, LOW);
@@ -433,7 +440,6 @@ void loop() {
         currentServoState = PULSE_LOCK_HIGH; //will go do that ^
         previousMicros = currentMicros; 
         curPulseNum = 0;
-        digitalWrite(Transistor_Pin_Servo, HIGH);
 
       }
       else{
@@ -442,9 +448,6 @@ void loop() {
           curPulseNum++;
           currentServoState = PULSE_OPEN_HIGH;
           previousMicros = currentMicros;
-        }else{
-          digitalWrite(Transistor_Pin_Servo, LOW);
-
         }
 
       }
@@ -471,16 +474,12 @@ void loop() {
         currentServoState = PULSE_OPEN_HIGH; // will go do that ^
         previousMicros = currentMicros; 
         curPulseNum = 0;
-        digitalWrite(Transistor_Pin_Servo, HIGH);
       }
       else{
         if(curPulseNum < maxPulseNum){
          curPulseNum++;
           currentServoState = PULSE_LOCK_HIGH;
           previousMicros = currentMicros;
-        }else{
-          digitalWrite(Transistor_Pin_Servo, LOW);
-
         }
       }
     break;
