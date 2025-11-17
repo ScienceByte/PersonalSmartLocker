@@ -27,7 +27,7 @@ enum LEDState {
   WRONG_PASSWORD    // yellow blinks rapidly
 };
 
-LEDState currentLEDstate = SET_PASSWORD; // Start in setup mode
+LEDState currentLEDstate = IDLE; // Start in idle mode //PASSWORD RESET
 
 //Servo Set-up___________________________________________
 unsigned long previousSerialMillis = 0;
@@ -91,7 +91,7 @@ unsigned long previousToggleMillis = 0;
 char passInput[5];
 int input = 0;
 char approvedPass[5];
-bool passwordSet = false;
+bool passwordSet = true; //start with assuming it's set for //PASSWORD RESET
 
 // Key mapping for the 4x3 keypad
 char KEYS[] = { '1','2','3','4','5','6','7','8','9','*','0','#' };
@@ -149,10 +149,10 @@ pinMode(Transistor_Pin_Servo, OUTPUT); //Servo Motor Transistor
 
   //Keypad input_________________________________
   //Prompts the user to input password
-  Serial.println("Set passcode: "); 
+  Serial.println("Ready to go. "); //PASSWORD RESET
   //turn on YELLOW and GREEN to signify it's set password mode
-  digitalWrite(GRN_LED_PIN, HIGH);
-  digitalWrite(YELLOW_LED_PIN, HIGH);
+  digitalWrite(GRN_LED_PIN, LOW); //PASSWORD RESET
+  digitalWrite(YELLOW_LED_PIN, LOW); //PASSWORD RESET
 
   //Test battery level to start
   digitalWrite(Transistor_Pin, HIGH);
@@ -306,7 +306,36 @@ void loop() {
     // Find which key matches the measured voltage
     for (int j = 0; j < 12; j++) {
       if (voltage >= voltages[j][0] && voltage <= voltages[j][1]) {
-        digitalWrite(Transistor_Pin_Servo, HIGH); //Turn on servo motor transistor(Power On)
+        digitalWrite(Transistor_Pin_Servo, HIGH); //Turn on servo motor transistor(Power On)\
+
+        lastKeypressMillis = millis();
+
+        if (KEYS[j] == '*') {
+          // Check if we are in the "unlocked" state
+          if (currentLEDstate == CORRECT_PASSWORD) {
+            Serial.println("Password reset initiated.");
+            Serial.println("Please enter a new 4-digit password:");
+
+            // Change state to SET_PASSWORD
+            currentLEDstate = SET_PASSWORD;
+            passwordSet = false; // This flag will make the 4-digit logic save the new pass
+            input = 0;           // Reset the password input buffer
+
+            // Set LEDs to "set password" mode (solid green & yellow)
+            digitalWrite(GRN_LED_PIN, HIGH);
+            digitalWrite(YELLOW_LED_PIN, HIGH);
+          }
+          // Optional: Keep '*' as a "clear" button if typing
+          else if (currentLEDstate == TYPING) {
+            Serial.println("Input cleared.");
+            input = 0; // Reset input buffer
+          }
+          // In any other state, '*' does nothing.
+          
+          break; // We're done handling the '*' press, exit the for-loop
+        }
+
+
         passInput[input] = KEYS[j];
         input++;
 
@@ -318,8 +347,6 @@ void loop() {
 
         Serial.print("Key pressed: ");
         Serial.println(KEYS[j]);
-        // The delay(300) is replaced by resetting the timer.
-        lastKeypressMillis = millis();
 
         if (input == 4) {
           passInput[4] = '\0';
