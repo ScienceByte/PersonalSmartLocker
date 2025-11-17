@@ -3,13 +3,17 @@ int POWER_LED_PIN = 8;//POWER_LED_PIN 8
 int YELLOW_LED_PIN = 7; //YELLOW_LED_PIN 7
 int GRN_LED_PIN = 6; //GRN_LED_PIN 6
 
-//Pin to send signal to transistor to turn on and off
+//Pin to send signal to transistor for voltage divider to turn on and off
 int Transistor_Pin = 10;
 const unsigned long TransistorLowTime = 10000;
 const unsigned long TransistorHighTime = 5000;
 unsigned long currentTransistorMillis = millis();
 unsigned long previousTransistorMillis = millis();
 bool Transistor_State = true;
+
+//Pin to send signal to transistor for servo motor to turn on and off
+int Transistor_Pin_Servo = 5;
+
 
 bool yellowBlinkState = LOW; //used for the blinking of yellow LED
 bool greenBlinkState = LOW; //used for green blinking
@@ -24,8 +28,6 @@ enum LEDState {
 };
 
 LEDState currentLEDstate = SET_PASSWORD; // Start in setup mode
-
-
 
 //Servo Set-up___________________________________________
 unsigned long previousSerialMillis = 0;
@@ -143,6 +145,7 @@ pinMode(POWER_LED_PIN, OUTPUT); //POWER_LED_PIN 8
 pinMode(YELLOW_LED_PIN, OUTPUT); //YELLOW_LED_PIN 7
 pinMode(GRN_LED_PIN, OUTPUT); //GRN_LED_PIN 6
 pinMode(Transistor_Pin, OUTPUT); //Transistor pin
+pinMode(Transistor_Pin_Servo, OUTPUT); //Servo Motor Transistor
 
   //Keypad input_________________________________
   //Prompts the user to input password
@@ -303,6 +306,7 @@ void loop() {
     // Find which key matches the measured voltage
     for (int j = 0; j < 12; j++) {
       if (voltage >= voltages[j][0] && voltage <= voltages[j][1]) {
+        digitalWrite(Transistor_Pin_Servo, HIGH); //Turn on servo motor transistor(Power On)
         passInput[input] = KEYS[j];
         input++;
 
@@ -317,20 +321,6 @@ void loop() {
         // The delay(300) is replaced by resetting the timer.
         lastKeypressMillis = millis();
 
-        //Check if user wants to reset password
-        if (KEYS[j] == '*')
-        {
-          if (!reset && passwordSet)
-          {
-            reset = true;
-            input = 0;
-          }
-        }
-        else if (reset)
-        {
-          reset = false;
-        }
-
         if (input == 4) {
           passInput[4] = '\0';
           Serial.print("Entered passcode: ");
@@ -340,7 +330,9 @@ void loop() {
 
             // Save the password to EEPROM
             for (int i = 0; i < 4; i++) {
-              EEPROM_write(i, passInput[i]);
+              //encrypt password
+              char encrypted_password = passInput[i] * 5;
+              EEPROM_write(i, encrypted_password);
             }
             passwordSet = true;
             Serial.println("Password is saved");
@@ -350,7 +342,8 @@ void loop() {
             // Check password
             bool correct = true;
             for (int i = 0; i < 4; i++) {
-              if (passInput[i] != EEPROM_read(i)) {
+              //Check correct password against encrypted password
+              if (passInput[i] != (EEPROM_read(i) / 5)) {
                 correct = false;
                 break;
               }
@@ -371,6 +364,7 @@ void loop() {
           }
           input = 0;  // reset for next entry
         }
+        digitalWrite(Transistor_Pin_Servo, LOW); //Turn off power to servo when no longer needed. 
         break; // Exit the for-loop once a key is found
       }
     }
