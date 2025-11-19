@@ -1,21 +1,26 @@
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
-  EEPROM_write(0, 2);
-  EEPROM_write(1, 8);
-  EEPROM_write(2, 0);
-  EEPROM_write(3, 4);
+  char write0 = '2';
+  char write1 = '8';
+  char write2 = '0';
+  char write3 = '#';
 
-  int valueRead0 = EEPROM_read(0);
-  int valueRead1 = EEPROM_read(1);
-  int valueRead2 = EEPROM_read(2);
-  int valueRead3 = EEPROM_read(3);
+   EEPROM_write(0, write0 +5);
+   EEPROM_write(1, write1 +5);
+   EEPROM_write(2, write2 +5);
+   EEPROM_write(3, write3 +5);
 
-  Serial.println(valueRead0);
-  Serial.println(valueRead1);
-  Serial.println(valueRead2);
-  Serial.println(valueRead3);
+  char valueRead0 = EEPROM_read(0) - 5;
+  char valueRead1 = EEPROM_read(1) - 5;
+  char valueRead2 = EEPROM_read(2) - 5;
+  char valueRead3 = EEPROM_read(3) - 5;
+
+  Serial.println((valueRead0) );
+  Serial.println((valueRead1) );
+  Serial.println((valueRead2) );
+  Serial.println((valueRead3) );
   
 }
 

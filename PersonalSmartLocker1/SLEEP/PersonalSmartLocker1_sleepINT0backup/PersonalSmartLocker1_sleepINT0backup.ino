@@ -360,8 +360,8 @@ void loop() {
             // Save the password to EEPROM
             for (int i = 0; i < 4; i++) {
               //encrypt password
-              char encrypted_password = passInput[i] + 5;
-              EEPROM_write(i, encrypted_password);
+              char write_encrypted_password = passInput[i];
+              EEPROM_write(i, write_encrypted_password +5);
               Serial.println("Encrypted Passcode: ");
               Serial.println(EEPROM_read(i)); 
             }
@@ -374,7 +374,8 @@ void loop() {
             bool correct = true;
             for (int i = 0; i < 4; i++) {
               //Check correct password against encrypted password
-              if (passInput[i] != (EEPROM_read(i) - 5)) {
+              char read_encrypted_password = (EEPROM_read(i) - 5);
+              if (passInput[i] != read_encrypted_password) {
                 correct = false;
                 break;
               }
