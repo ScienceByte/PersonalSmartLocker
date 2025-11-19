@@ -25,8 +25,6 @@ enum LEDState {
 
 LEDState currentLEDstate = SET_PASSWORD; // Start in idle mode //PASSWORD RESET
 
-
-
 //Servo Set-up___________________________________________
 unsigned long previousSerialMillis = 0;
 const long serialInterval = 200; // Print every 1000 ms, and check if it's obstructed that often too
